@@ -1,7 +1,7 @@
 /*
- * Renesas SPI driver
+ * SH ADC platform data
  *
- * Copyright (C) 2012-2013  Renesas Solutions Corp.
+ * Copyright (C) 2013  Renesas Solutions Corp.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,19 +17,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#ifndef __LINUX_PLATFORM_DATA_SH_ADC_H__
+#define __LINUX_PLATFORM_DATA_SH_ADC_H__
 
-#ifndef __LINUX_SPI_RENESAS_SPI_H__
-#define __LINUX_SPI_RENESAS_SPI_H__
-
-struct rspi_plat_data {
-	u8 data_width; /* data register access width */
-	bool txmode;	/* tx only mode  */
-	bool spcr;	/* set parity register */
-
-	unsigned int dma_tx_id;
-	unsigned int dma_rx_id;
-
-	unsigned dma_width_16bit:1;	/* DMAC read/write width = 16-bit */
+struct sh_adc_data {
+	u8	num_channels;
+	u8	mtu2_ch;
 };
 
-#endif
+#endif /* __LINUX_PLATFORM_DATA_SH_ADC_H__ */
+

@@ -1,7 +1,7 @@
 /*
- * Renesas SPI driver
+ * RIIC bus driver
  *
- * Copyright (C) 2012-2013  Renesas Solutions Corp.
+ * Copyright (C) 2011-2013  Renesas Solutions Corp.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,18 +18,25 @@
  *
  */
 
-#ifndef __LINUX_SPI_RENESAS_SPI_H__
-#define __LINUX_SPI_RENESAS_SPI_H__
+#ifndef _RIIC_H_
+#define _RIIC_H_
 
-struct rspi_plat_data {
-	u8 data_width; /* data register access width */
-	bool txmode;	/* tx only mode  */
-	bool spcr;	/* set parity register */
+struct riic_platform_data {
+	int	clock;		/* i2c clock (kHZ) */
+};
 
-	unsigned int dma_tx_id;
-	unsigned int dma_rx_id;
+struct riic_core_packet {
+	unsigned short slave_address;
+	void *data;
+	int len;
+	int buf_idx;
+	unsigned char rw;
+#define RIIC_CORE_RW_MASTER_TRANSMIT	0
+#define RIIC_CORE_RW_MASTER_RECEIVE	1
+#define RIIC_CORE_RW_SLAVE_TRANSMIT	2
+#define RIIC_CORE_RW_SLAVE_RECEIVE	3
 
-	unsigned dma_width_16bit:1;	/* DMAC read/write width = 16-bit */
+	unsigned done:1;
 };
 
 #endif

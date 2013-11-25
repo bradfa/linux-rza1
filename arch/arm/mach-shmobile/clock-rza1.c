@@ -147,7 +147,7 @@ struct clk div4_clks[DIV4_NR] = {
 enum { MSTP51, MSTP50,
 	MSTP71, MSTP70,
 	MSTP47, MSTP46, MSTP45, MSTP44, MSTP43, MSTP42, MSTP41, MSTP40,
-	MSTP33, MSTP67, MSTP60,
+	MSTP32, MSTP33, MSTP67, MSTP60,
 	MSTP84,
 	MSTP92, MSTP93,
 	MSTP94, MSTP95, MSTP96, MSTP97,
@@ -187,6 +187,7 @@ static struct clk mstp_clks[MSTP_NR] = {
 	[MSTP95] = SH_CLK_MSTP8(&peripheral0_clk, STBCR9, 5, 0), /* RIIC2 */
 	[MSTP96] = SH_CLK_MSTP8(&peripheral0_clk, STBCR9, 6, 0), /* RIIC1 */
 	[MSTP97] = SH_CLK_MSTP8(&peripheral0_clk, STBCR9, 7, 0), /* RIIC0 */
+	[MSTP32] = SH_CLK_MSTP8(&peripheral1_clk, STBCR3, 2, 0), /* CAN */
 };
 
 static struct clk_lookup lookups[] = {
@@ -227,6 +228,7 @@ static struct clk_lookup lookups[] = {
 	CLKDEV_CON_ID("rspi2", &mstp_clks[MSTP105]),
 	CLKDEV_CON_ID("rspi3", &mstp_clks[MSTP104]),
 	CLKDEV_CON_ID("rspi4", &mstp_clks[MSTP103]),
+	CLKDEV_DEV_ID("can",  &mstp_clks[MSTP32]),
 };
 
 int __init rza1_clock_init(void)

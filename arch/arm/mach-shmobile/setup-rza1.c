@@ -35,6 +35,7 @@
 #include <linux/usb/r8a66597.h>
 #include <linux/spi/sh_spibsc.h>
 #include <linux/platform_data/dma-rza1.h>
+#include <linux/can/platform/rza1_can.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <mach/irqs.h>
@@ -630,6 +631,49 @@ static struct resource spi4_resources[] = {
 	},
 };
 
+static struct resource rz_can_resources[] = {
+	[0] = {
+		.start	= 0xe803a000,
+		.end	= 0xe803b813,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= 257,
+		.end	= 257,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start	= 255,
+		.end	= 255,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[3] = {
+		.start	= 256,
+		.end	= 256,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[4] = {
+		.start	= 253,
+		.end	= 253,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct rz_can_platform_data rz_can_data = {
+	.channel	= 1,
+	.clock_select	= CLKR_CLKC,
+};
+
+static struct platform_device rz_can_device = {
+	.name		= "rz_can",
+	.num_resources	= ARRAY_SIZE(rz_can_resources),
+	.resource	= rz_can_resources,
+	.dev	= {
+		.platform_data	= &rz_can_data,
+
+	},
+};
+
 static struct platform_device spi4_device = {
 	.name	= "rspi",
 	.id	= 4,
@@ -838,6 +882,7 @@ static struct platform_device *rza1_devices[] __initdata = {
 	&adc0_device,
 	&spibsc0_device,
 	&spibsc1_device,
+	&rz_can_device,
 };
 
 static struct platform_device *rza1_early_devices[] __initdata = {

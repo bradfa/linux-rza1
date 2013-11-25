@@ -9,6 +9,7 @@
 #include <linux/platform_device.h>
 #include <linux/can/platform/rza1_can.h>
 #include <linux/clk.h>
+#include <mach/rza1.h>
 
 #include <linux/can/dev.h>
 #include <linux/can/error.h>
@@ -486,6 +487,7 @@ static int rz_can_wait(struct rz_can_priv *priv, unsigned long offset,
 
 	do {
 		reg = rz_can_read(priv, offset);
+		reg = ~reg;
 		reg &= mask;
 
 		if (reg == mask)
@@ -717,6 +719,8 @@ static int rz_can_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No platform data provided!\n");
 		goto fail;
 	}
+
+	rskrza1_board_can_pfc_assign(pdata->channel);
 
 	rx_irq = platform_get_irq(pdev, 0);
 	tx_irq = platform_get_irq(pdev, 1);

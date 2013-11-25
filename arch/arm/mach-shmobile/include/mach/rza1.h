@@ -63,4 +63,5 @@ extern int rza1_pfc_pin_assign(enum pfc_pin_number pinnum, enum pfc_mode mode,
 			       enum pfc_direction dir);
 extern int rza1_pfc_pin_bidirection(enum pfc_pin_number pinnum, bool bidirection);
 int rskrza1_board_i2c_pfc_assign(int id);
+int rskrza1_board_can_pfc_assign(int channel);
 #endif /* __ASM_RZA1_H__ */

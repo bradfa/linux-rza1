@@ -303,6 +303,21 @@ void __init rskrza1_init(void)
 #endif
 }
 
+int rskrza1_board_can_pfc_assign(int channel)
+{
+	if (channel == 1) {
+		rza1_pfc_pin_assign(P5_9, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_10, ALT5, DIR_PIPC);
+	}
+
+	if (channel == 2) {
+		rza1_pfc_pin_assign(P7_3, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P7_2, ALT5, DIR_PIPC);
+	}
+
+	return 0;
+}
+
 int rskrza1_board_i2c_pfc_assign(int id)
 {
 	/* set I2C pfc configuration */

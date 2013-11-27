@@ -1,18 +1,27 @@
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/kernel.h>
+/*
+ * rza1_can.c - CAN network driver for RZ/A1 SoC CAN controller
+ *
+ * (C) 2013 by Carlo Caione <carlo.caione@gmail.com>
+ *
+ * This software may be distributed under the terms of the GNU General
+ * Public License ("GPL") version 2 as distributed in the 'COPYING'
+ * file from the main directory of the linux kernel source.
+ *
+ */
+
 #include <linux/bitops.h>
+#include <linux/clk.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/errno.h>
+#include <linux/module.h>
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <linux/platform_device.h>
-#include <linux/can/platform/rza1_can.h>
-#include <linux/clk.h>
-#include <mach/rza1.h>
-
-#include <linux/can/dev.h>
 #include <linux/can/error.h>
+#include <linux/can/dev.h>
+#include <linux/can/platform/rza1_can.h>
+#include <mach/rza1.h>
 
 enum {
 	CFM_RX_MODE = 0,
@@ -38,8 +47,8 @@ enum {
 
 #define RZ_CAN_FIFO_K(m,n)		(((m) * 3) + (n))
 
-#define RZ_CAN_GAFLID_FIFO_M(x)		(x)
-#define RZ_CAN_GAFLID_TXRX_FIFO_M(x)	((x) + 8)
+#define RZ_CAN_GAFLID_FIFO_M(x)		BIT(x)
+#define RZ_CAN_GAFLID_TXRX_FIFO_M(x)	BIT(((x) + 8))
 
 #define RZ_CAN_RSCAN0GCFG		0x0084
 #define RZ_CAN_RSCAN0GCFG_DCS(x)	((x) << 4)
@@ -116,6 +125,7 @@ enum {
 #define RZ_CAN_RSCAN0CmERFL_ADERR	BIT(14)
 
 #define RZ_CAN_RSCAN0CFSTSk(k)		(0x0178 + ((k) * 0x0004))
+#define RZ_CAN_RSCAN0CFSTSk_CFEMP	BIT(0)
 #define RZ_CAN_RSCAN0CFSTSk_CFFLL	BIT(1)
 #define RZ_CAN_RSCAN0CFSTSk_CFMLT	BIT(2)
 #define RZ_CAN_RSCAN0CFSTSk_CFRXIF	BIT(3)
@@ -131,7 +141,7 @@ enum {
 #define RZ_CAN_RSCAN0CFPTRk_CFDLC_G(x)	(((x) & 0xf0000000) >> 28)
 
 #define RZ_CAN_RSCAN0CFDFbk(k,b)	((0x0e88 + ((b) * 0x04)) + ((k) * 0x0010))
-#define RZ_CAN_RSCAN0CFDFbk_CFDB(x,s)	(((x) & 0xff) << (s))
+#define RZ_CAN_RSCAN0CFDFbk_CFDB(x,s)	(((x) & 0xff) << ((s) * 8))
 
 #define RZ_CAN_RSCAN0CFPCTRk(k)		(0x01d8 + ((k) * 0x0004))
 
@@ -166,7 +176,7 @@ static const struct can_bittiming_const rz_can_bittiming_const = {
 };
 
 static void rz_can_write(struct rz_can_priv *priv, unsigned long reg_offs,
-			  u32 data)
+			 u32 data)
 {
 	iowrite32(data, priv->base + reg_offs);
 }
@@ -217,6 +227,10 @@ static int rz_can_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	u32 reg;
 	int b, s;
 
+	reg = rz_can_read(priv, RZ_CAN_RSCAN0CFCCk(priv->k_tx));
+	reg |= RZ_CAN_RSCAN0CFCCk_CFE;
+	rz_can_write(priv, RZ_CAN_RSCAN0CFCCk(priv->k_tx), reg);
+
 	if (can_dropped_invalid_skb(ndev, skb))
 		return NETDEV_TX_OK;
 
@@ -255,6 +269,10 @@ static int rz_can_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	rz_can_write(priv, RZ_CAN_RSCAN0CFPCTRk(priv->k_tx), 0xff);
 	priv->tx_last = RZ_CAN_INC_BUF_ID(priv->tx_last);
 
+	reg = rz_can_read(priv, RZ_CAN_RSCAN0CFCCk(priv->k_rx));
+	reg |= RZ_CAN_RSCAN0CFCCk_CFE;
+	rz_can_write(priv, RZ_CAN_RSCAN0CFCCk(priv->k_rx), reg);
+
 	return 0;
 }
 
@@ -284,10 +302,11 @@ static void rz_can_rx_pkt(struct net_device *ndev)
 	}
 
 	if (reg & RZ_CAN_RSCAN0CFIDk_CFRTR)
-	       cf->can_id |= CAN_RTR_FLAG;
+		cf->can_id |= CAN_RTR_FLAG;
 
 	for (b = 0; b < 2; b++) {
 		reg = rz_can_read(priv, RZ_CAN_RSCAN0CFDFbk(priv->k_rx, b));
+		//printk(KERN_EMERG "[CAN-rx-pkt] 0x%08X\n", reg);
 		for (s = 0; s < 4; s++)	{
 			cf->data[(b * 4) + s] = reg & 0x000000ff;
 			reg >>= 8;
@@ -297,6 +316,7 @@ static void rz_can_rx_pkt(struct net_device *ndev)
 	reg = rz_can_read(priv, RZ_CAN_RSCAN0CFPTRk(priv->k_rx));
 	cf->can_dlc = RZ_CAN_RSCAN0CFPTRk_CFDLC_G(reg);
 
+	rz_can_write(priv, RZ_CAN_RSCAN0CFPCTRk(priv->k_rx), 0xff);
 	netif_rx(skb);
 
 	stats->rx_packets++;
@@ -472,9 +492,8 @@ irqreturn_t rz_can_interrupt(int irq, void *dev_id)
 		netdev_dbg(ndev, "A transmit/receive FIFO message is lost.\n");
 	}
 
-	if (irq == priv->err_irq_m) {
+	if (irq == priv->err_irq_m)
 		rz_can_err(ndev);
-	}
 
 	return IRQ_HANDLED;
 }
@@ -534,7 +553,7 @@ static int rz_can_start(struct net_device *ndev)
 	rz_can_write(priv, RZ_CAN_RSCAN0GAFLMj(0), 0);
 	rz_can_write(priv, RZ_CAN_RSCAN0GAFLP0j(0), 0);
 	rz_can_write(priv, RZ_CAN_RSCAN0GAFLP1j(0),
-		      RZ_CAN_GAFLID_TXRX_FIFO_M(RZ_CAN_RX_FIFO));
+		     RZ_CAN_GAFLID_TXRX_FIFO_M(priv->k_rx));
 
 	reg = rz_can_read(priv, RZ_CAN_RSCAN0GAFLECTR);
 	reg &= ~RZ_CAN_RSCAN0GAFLECTR_AFLDAE;
@@ -556,7 +575,6 @@ static int rz_can_start(struct net_device *ndev)
 	reg |= RZ_CAN_RSCAN0CFCCk_CFDC(RZ_CAN_CFCD_FULL);
 	reg |= RZ_CAN_RSCAN0CFCCk_CFTML(RZ_CAN_CFTML);
 	reg |= RZ_CAN_RSCAN0CFCCk_CFTXIE;
-	reg |= RZ_CAN_RSCAN0CFCCk_CFE;
 	rz_can_write(priv, RZ_CAN_RSCAN0CFCCk(priv->k_tx), reg);
 
 	/* RSCAN0CmCTR / RSCAN0CmCTR register setting */
@@ -580,6 +598,8 @@ static int rz_can_start(struct net_device *ndev)
 	reg &= ~RZ_CAN_RSCAN0CmCTR_CHMDC_M;
 	reg |= RZ_CAN_RSCAN0CmCTR_CHMDC(OP_MODE);
 	rz_can_write(priv, RZ_CAN_RSCAN0CmCTR(priv->m), reg);
+
+	priv->can.state = CAN_STATE_ERROR_ACTIVE;
 
 	return 0;
 }
@@ -752,7 +772,7 @@ static int rz_can_probe(struct platform_device *pdev)
 
 	priv = netdev_priv(ndev);
 
-	priv->clk = devm_clk_get(&pdev->dev, "peripheral_clk");
+	priv->clk = devm_clk_get(&pdev->dev, "can");
 	if (IS_ERR(priv->clk)) {
 		err = PTR_ERR(priv->clk);
 		dev_err(&pdev->dev, "cannot get clock: %d\n", err);
@@ -774,7 +794,7 @@ static int rz_can_probe(struct platform_device *pdev)
 	priv->k_tx = RZ_CAN_FIFO_K(priv->m, RZ_CAN_TX_FIFO);
 	priv->k_rx = RZ_CAN_FIFO_K(priv->m, RZ_CAN_RX_FIFO);
 
-	priv->can.clock.freq = clk_get_rate(priv->clk);
+	priv->can.clock.freq = (clk_get_rate(priv->clk) / 2);
 	priv->can.bittiming_const = &rz_can_bittiming_const;
 	priv->can.do_set_mode = rz_can_do_set_mode;
 	priv->can.do_get_berr_counter = rz_can_get_berr_counter;
@@ -788,6 +808,9 @@ static int rz_can_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "register_candev() failed\n");
 		goto fail_clk;
 	}
+
+	dev_info(&pdev->dev, "device registered (clock: %d, ch: %d, k_tx: %d, k_rx: %d)\n",
+			priv->can.clock.freq, priv->m, priv->k_tx, priv->k_rx);
 
 	return 0;
 

@@ -317,6 +317,7 @@ int rskrza1_board_can_pfc_assign(int channel)
 
 	return 0;
 }
+EXPORT_SYMBOL(rskrza1_board_can_pfc_assign);
 
 int rskrza1_board_i2c_pfc_assign(int id)
 {

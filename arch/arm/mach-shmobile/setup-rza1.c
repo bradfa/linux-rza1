@@ -638,18 +638,18 @@ static struct resource rz_can_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	[1] = {
-		.start	= 257,
-		.end	= 257,
+		.start	= 258,
+		.end	= 258,
 		.flags	= IORESOURCE_IRQ,
 	},
 	[2] = {
-		.start	= 255,
-		.end	= 255,
+		.start	= 260,
+		.end	= 260,
 		.flags	= IORESOURCE_IRQ,
 	},
 	[3] = {
-		.start	= 256,
-		.end	= 256,
+		.start	= 259,
+		.end	= 259,
 		.flags	= IORESOURCE_IRQ,
 	},
 	[4] = {

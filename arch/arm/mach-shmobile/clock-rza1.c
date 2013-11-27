@@ -228,7 +228,7 @@ static struct clk_lookup lookups[] = {
 	CLKDEV_CON_ID("rspi2", &mstp_clks[MSTP105]),
 	CLKDEV_CON_ID("rspi3", &mstp_clks[MSTP104]),
 	CLKDEV_CON_ID("rspi4", &mstp_clks[MSTP103]),
-	CLKDEV_DEV_ID("can",  &mstp_clks[MSTP32]),
+	CLKDEV_CON_ID("can",  &mstp_clks[MSTP32]),
 };
 
 int __init rza1_clock_init(void)

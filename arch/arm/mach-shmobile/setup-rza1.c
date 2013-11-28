@@ -34,6 +34,7 @@
 #include <linux/sh_timer.h>
 #include <linux/usb/r8a66597.h>
 #include <linux/spi/sh_spibsc.h>
+#include <video/ren_vdc5fb.h>
 #include <linux/platform_data/dma-rza1.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
@@ -231,6 +232,40 @@ static struct sh_timer_config mtu2_0_platform_data = {
 	.channel_offset = -0x80,
 	.timer_bit = 0,
 	.clockevent_rating = 200,
+};
+
+static struct ren_vdc5_info ren_rza1_vdc5_info = {
+	.channel	= 0,
+	.bpp		= 16,
+	.clock_source	= VDC5_PANEL_ICKSEL_LVDS,
+	.clock_divider	= VDC5_PANEL_CLKDIV_1_1,
+	.lvds = {
+		.lvds_in_clk_sel	= VDC5_LVDS_INCLK_SEL_PERI,	/* The clock input to frequency divider 1 */
+		.lvds_idiv_set		= VDC5_LVDS_NDIV_4,		/* NIDIV */
+		.lvdspll_tst		= (uint16_t)8u,			/* LVDSPLL_TST (LVDS PLL internal parameters) */
+		.lvds_odiv_set		= VDC5_LVDS_NDIV_4,		/* NODIV */
+		.lvdspll_fd		= (uint16_t)384u,		/* NFD */
+		.lvdspll_rd		= (uint16_t)(5u-1u),		/* NRD */
+		.lvdspll_od		= VDC5_LVDS_PLL_NOD_8,		/* NOD */
+	},
+	.hs_pulse_width = 128,
+	.hs_start_pos	= 0,
+	.vs_pulse_width	= 8,
+	.vs_start_pos	= 0,
+	.lcd_cfg = {
+		.name		= "LCD",
+		.xres		= 800,
+		.yres		= 600,
+		.left_margin	= 88,
+		.right_margin	= 40,
+		.hsync_len	= 128,
+		.upper_margin	= 23,
+		.lower_margin	= 1,
+		.vsync_len	= 4,
+		.sync		= FB_SYNC_HOR_HIGH_ACT,
+	},
+	.panel_width	= 115,
+	.panel_height	= 86,
 };
 
 static struct resource mtu2_0_resources[] = {
@@ -669,6 +704,28 @@ static struct resource adc0_resources[] = {
 	},
 };
 
+/* framebuffer */
+static struct resource vdc5_resources[] = {
+	[0] = {
+		.name	= "vdc50",
+		.start	= 0xfcff7400,
+		.end	= 0xfcff7fd7, /* check */
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.name	= "vdc51",
+		.start	= 0xfcff9400,
+		.end	= 0xfcff9fd7, /* check */
+		.flags	= IORESOURCE_MEM,
+	},
+	[3] = {
+		.name	= "lvds",
+		.start	= 0xfcff7a30,
+		.end	= 0xfcff7a5b,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
 static struct sh_adc_data adc_data = {
 	.num_channels = 8,
 	.mtu2_ch = 1,
@@ -822,6 +879,18 @@ static struct platform_device dma_device = {
 	},
 };
 
+static struct platform_device vdc5_device = {
+	.name		= "ren_vdc5fb",
+	.num_resources	= ARRAY_SIZE(vdc5_resources),
+	.resource	= vdc5_resources,
+	.dev	= {
+		.platform_data	= &ren_rza1_vdc5_info,
+		.dma_mask		= NULL,
+		.coherent_dma_mask	= 0xffffffff,
+
+	},
+};
+
 static struct platform_device *rza1_devices[] __initdata = {
 	&i2c_device0,
 	&i2c_device1,
@@ -838,6 +907,7 @@ static struct platform_device *rza1_devices[] __initdata = {
 	&adc0_device,
 	&spibsc0_device,
 	&spibsc1_device,
+	&vdc5_device,
 };
 
 static struct platform_device *rza1_early_devices[] __initdata = {

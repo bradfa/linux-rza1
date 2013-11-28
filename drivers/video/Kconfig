@@ -640,6 +640,17 @@ config FB_BFIN_7393
 	  To compile this driver as a module, choose M here: the
 	  module will be called bfin_adv7393fb.
 
+config FB_REN_VDC5FB
+	tristate "Renesas VDC5 framebuffer support"
+	depends on FB && ARCH_RZA1
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	---help---
+	  Frame buffer driver for the Renesas VDC5.
+
+
 choice
 	prompt  "Video mode support"
 	depends on FB_BFIN_7393

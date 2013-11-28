@@ -263,7 +263,7 @@ void __init rskrza1_init(void)
 /*	rza1_pfc_pin_assign(P0_0, PMODE, DIR_IN);	*/
 /*	rza1_pfc_pin_assign(P0_1, PMODE, DIR_IN);	*/
 /*	rza1_pfc_pin_assign(P7_0, PMODE, DIR_IN);	*/
-	
+
 	/* set MMCIF pfc configuration */
 	rza1_pfc_pin_assign(P3_8, ALT8, DIR_PIPC);	/* MMC_CD */
 	rza1_pfc_pin_assign(P3_10, ALT8, DIR_PIPC);	/* MMC_D1 */
@@ -302,6 +302,80 @@ void __init rskrza1_init(void)
 	rskrza1_init_spi();
 #endif
 }
+
+int rskrza1_board_vdc5_pfc_assign(int channel)
+{
+	if (channel == 1) {
+		rza1_pfc_pin_assign(P4_14, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_12, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_10, ALT2, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P9_7, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P9_6, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P9_5, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P9_4, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P9_3, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P9_2, ALT1, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P5_10, ALT7, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_9, ALT7, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P2_15, ALT7, DIR_PIPC);
+		rza1_pfc_pin_assign(P2_14, ALT7, DIR_PIPC);
+		rza1_pfc_pin_assign(P2_13, ALT7, DIR_PIPC);
+		rza1_pfc_pin_assign(P2_12, ALT7, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P2_11, ALT6, DIR_PIPC);
+		rza1_pfc_pin_assign(P2_10, ALT6, DIR_PIPC);
+		rza1_pfc_pin_assign(P2_9, ALT6, DIR_PIPC);
+		rza1_pfc_pin_assign(P2_8, ALT6, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P5_7, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_6, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_5, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_4, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_3, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_2, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_1, ALT2, DIR_PIPC);
+		rza1_pfc_pin_assign(P5_0, ALT2, DIR_PIPC);
+	}
+
+	if (channel == 0) {
+		rza1_pfc_pin_assign(P11_15, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_14, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_13, ALT5, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P10_0, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_1, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_2, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_3, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_4, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_5, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_6, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_7, ALT5, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P10_8, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_9, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_10, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_11, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_12, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_13, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_14, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P10_15, ALT5, DIR_PIPC);
+
+		rza1_pfc_pin_assign(P11_0, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_1, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_2, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_3, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_4, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_5, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_6, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P11_7, ALT5, DIR_PIPC);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(rskrza1_board_vdc5_pfc_assign);
 
 int rskrza1_board_i2c_pfc_assign(int id)
 {

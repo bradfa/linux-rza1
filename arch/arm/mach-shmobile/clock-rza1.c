@@ -149,6 +149,7 @@ enum { MSTP51, MSTP50,
 	MSTP47, MSTP46, MSTP45, MSTP44, MSTP43, MSTP42, MSTP41, MSTP40,
 	MSTP33, MSTP67, MSTP60,
 	MSTP84,
+	MSTP90, MSTP91,
 	MSTP92, MSTP93,
 	MSTP94, MSTP95, MSTP96, MSTP97,
 	MSTP107, MSTP106, MSTP105, MSTP104, MSTP103,
@@ -176,9 +177,11 @@ static struct clk mstp_clks[MSTP_NR] = {
 	[MSTP33] = SH_CLK_MSTP8(&peripheral0_clk, STBCR3, 3, 0), /* MTU2 */
 	[MSTP67] = SH_CLK_MSTP8(&peripheral1_clk, STBCR6, 7, 0), /* ADC */
 	[MSTP60] = SH_CLK_MSTP8(&r_clk, STBCR6, 0, 0), /* RTC */
-	[MSTP123] = SH_CLK_MSTP8(&peripheral1_clk, STBCR12, 3, 0), 					/* SDHI00 */
+	[MSTP90] = SH_CLK_MSTP8(&peripheral0_clk, STBCR9, 0, 0), /* VDC5 ch 1 */
+	[MSTP91] = SH_CLK_MSTP8(&peripheral0_clk, STBCR9, 1, 0), /* VDC5 ch 0 and LVDS */
+	[MSTP123] = SH_CLK_MSTP8(&peripheral1_clk, STBCR12, 3, 0), /* SDHI00 */
 	[MSTP122] = SH_CLK_MSTP8(&peripheral1_clk, STBCR12, 2, CLK_ENABLE_ON_INIT), /* SDHI01 */
-	[MSTP121] = SH_CLK_MSTP8(&peripheral1_clk, STBCR12, 1, 0), 					/* SDHI10 */
+	[MSTP121] = SH_CLK_MSTP8(&peripheral1_clk, STBCR12, 1, 0), /* SDHI10 */
 	[MSTP120] = SH_CLK_MSTP8(&peripheral1_clk, STBCR12, 0, CLK_ENABLE_ON_INIT), /* SDHI11 */
 	[MSTP84] = SH_CLK_MSTP8(&peripheral1_clk, STBCR8, 4, 0), /* MMC */
 	[MSTP92] = SH_CLK_MSTP8(&bus_clk, STBCR9, 2, 0), /* SPIBSC1 */
@@ -222,6 +225,8 @@ static struct clk_lookup lookups[] = {
 	CLKDEV_CON_ID("riic3", &mstp_clks[MSTP94]),
 	CLKDEV_CON_ID("spibsc0", &mstp_clks[MSTP93]),
 	CLKDEV_CON_ID("spibsc1", &mstp_clks[MSTP92]),
+	CLKDEV_CON_ID("vdc51", &mstp_clks[MSTP90]),
+	CLKDEV_CON_ID("vdc50", &mstp_clks[MSTP91]),
 	CLKDEV_CON_ID("rspi0", &mstp_clks[MSTP107]),
 	CLKDEV_CON_ID("rspi1", &mstp_clks[MSTP106]),
 	CLKDEV_CON_ID("rspi2", &mstp_clks[MSTP105]),

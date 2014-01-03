@@ -50,10 +50,12 @@ struct vdc5fb_priv {
 	struct clk *lvds_clk;
 	/* framebuffers */
 	void __iomem *base;
+	void __iomem *lvds_base;
 	dma_addr_t dma_handle;
 	unsigned long flm_off;
 	unsigned long flm_num;
 	int fb_nofree;
+	int id;
 	/* irq */
 	struct {
 		int start;		/* start irq number */
@@ -77,6 +79,7 @@ struct vdc5fb_priv {
 
 /************************************************************************/
 
+static int vdc5fb_init_lvds(struct vdc5fb_priv *priv);
 static int vdc5fb_init_syscnt(struct vdc5fb_priv *priv);
 static int vdc5fb_init_sync(struct vdc5fb_priv *priv);
 static int vdc5fb_init_scalers(struct vdc5fb_priv *priv);
@@ -303,6 +306,85 @@ static int vdc5fb_set_panel_clock(struct vdc5fb_priv *priv,
 
 /************************************************************************/
 
+static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
+{
+	struct vdc5fb_pdata *pdata = priv_to_pdata(priv);
+	struct vdc5fb_lvds_info *lvds = &pdata->lvds;
+	u32 tmp;
+	int t;
+
+	tmp = vdc5fb_read(priv, SYSCNT_PANEL_CLK);
+	tmp &= ~PANEL_ICKEN;
+	vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
+
+	/* Output from the LVDS PLL is disabled. */
+	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
+	tmp &= ~LVDS_CLK_EN;
+	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+
+	/* Controls power-down for the LVDS PLL: Power-down state */
+	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
+	tmp |= LVDS_PLL_PD;
+	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+
+	/* This is a delay (1 usec) while waiting for PLL PD to settle. */
+	udelay(1);
+
+	/* LCLKSELR: LVDS clock select register */
+	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
+	tmp &= ~LVDS_LCLKSELR_MASK;
+
+	/* The clock input to frequency divider 1 */
+	tmp |= LVDS_SET_IN_CLK_SEL(lvds->lvds_in_clk_sel);
+
+	/* The frequency dividing value (NIDIV) for frequency divider 1 */
+	tmp |= LVDS_SET_IDIV(lvds->lvds_idiv_set);
+
+	/* Internal parameter setting for LVDS PLL */
+	tmp |= LVDS_SET_TST(lvds->lvds_pll_tst);
+
+	/* The frequency dividing value (NODIV) for frequency divider 2 */
+	tmp |= LVDS_SET_ODIV(lvds->lvds_odiv_set);
+
+	/* A channel in VDC5 whose data is to be output through the LVDS */
+	if (priv->id != 0)
+		tmp |= LVDS_VDC_SEL;
+	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+
+	/* LPLLSETR: LVDS PLL setting register */
+	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
+	tmp &= ~LVDS_LPLLSETR_MASK;
+
+	/* The frequency dividing value (NFD) for the feedback frequency */
+	tmp |= LVDS_SET_FD(lvds->lvds_pll_fd);
+
+	/* The frequency dividing value (NRD) for the input frequency */
+	tmp |= LVDS_SET_RD(lvds->lvds_pll_rd);
+
+	/* The frequency dividing value (NOD) for the output frequency */
+	tmp |= LVDS_SET_OD(lvds->lvds_pll_od);
+	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+
+	/* Controls power-down for the LVDS PLL: Normal operation */
+	tmp &= ~LVDS_PLL_PD;
+	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+
+	/* This is a delay (1 usec) while waiting for PLL PD to settle. */
+	udelay(1);
+
+	for (t = 0; t < 10; t++)
+		if (vdc5fb_lvds_read(priv, LPLLMONR) & LVDS_PLL_LD)
+			break;
+
+	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
+	tmp |= LVDS_CLK_EN;
+	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+
+	return 0;
+}
+
+/************************************************************************/
+
 static int vdc5fb_init_syscnt(struct vdc5fb_priv *priv)
 {
 	struct vdc5fb_pdata *pdata = priv_to_pdata(priv);
@@ -324,7 +406,8 @@ static int vdc5fb_init_syscnt(struct vdc5fb_priv *priv)
 	/* Setup panel clock */
 	tmp = PANEL_DCDR(priv->dcdr);
 	tmp |= PANEL_ICKEN;
-	tmp |= PANEL_OCKSEL(0);
+
+	tmp |= PANEL_OCKSEL(pdata->panel_ocksel);
 	tmp |= PANEL_ICKSEL(pdata->panel_icksel);
 	vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
 
@@ -754,6 +837,8 @@ static void vdc5fb_set_videomode(struct vdc5fb_priv *priv,
 		priv->flm_off += 0x1000;
 	priv->flm_num = 0;
 
+	if (pdata->use_lvds)
+		vdc5fb_init_lvds(priv);
 	vdc5fb_init_syscnt(priv);
 	vdc5fb_init_sync(priv);
 	vdc5fb_init_scalers(priv);
@@ -1102,6 +1187,12 @@ static int vdc5fb_start(struct vdc5fb_priv *priv)
 			return error;
 	}
 
+	if (pdata->use_lvds) {
+		error = clk_enable(priv->lvds_clk);
+		if (error < 0)
+			return error;
+	}
+
 	vdc5fb_set_videomode(priv, NULL);
 
 	return error;
@@ -1141,6 +1232,7 @@ static int vdc5fb_probe(struct platform_device *pdev)
 	struct vdc5fb_pdata *pdata;
 	struct fb_info *info;
 	struct resource *res;
+	struct resource *lvds_res;
 	void *buf;
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
@@ -1159,6 +1251,7 @@ static int vdc5fb_probe(struct platform_device *pdev)
 		goto err1;
 	}
 	priv->pdata = pdata;
+	priv->id = pdev->id;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -1168,6 +1261,17 @@ static int vdc5fb_probe(struct platform_device *pdev)
 	priv->base = ioremap_nocache(res->start, resource_size(res));
 	if (!priv->base) {
 		dev_err(&pdev->dev, "cannot ioremap (reg)\n");
+		goto err1;
+	}
+
+	lvds_res =  platform_get_resource_byname(pdev, IORESOURCE_MEM, "lvds: reg");
+	if (!lvds_res) {
+		dev_err(&pdev->dev, "cannot get resources (lvds reg)\n");
+		goto err1;
+	}
+	priv->lvds_base = ioremap_nocache(lvds_res->start, resource_size(lvds_res));
+	if (!priv->lvds_base) {
+		dev_err(&pdev->dev, "cannot ioremap (lvds reg)\n");
 		goto err1;
 	}
 

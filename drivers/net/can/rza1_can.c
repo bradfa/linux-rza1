@@ -71,12 +71,9 @@ enum {
 
 #define RZ_CAN_RSCAN0CmCTR(m)		(0x0004 + ((m) * 0x0010))
 #define RZ_CAN_RSCAN0CmCTR_CSLPR	BIT(2)
-#define RZ_CAN_RSCAN0CmCTR_BEIE		BIT(8)
 #define RZ_CAN_RSCAN0CmCTR_EWIE		BIT(9)
 #define RZ_CAN_RSCAN0CmCTR_EPIE		BIT(10)
 #define RZ_CAN_RSCAN0CmCTR_BOEIE	BIT(11)
-#define RZ_CAN_RSCAN0CmCTR_OLIE		BIT(13)
-#define RZ_CAN_RSCAN0CmCTR_TAIE		BIT(16)
 
 #define RZ_CAN_RSCAN0CmCTR_CHMDC_M	0x00000003
 #define RZ_CAN_RSCAN0CmCTR_CHMDC(x)	(((x) & 0x03) << 0)
@@ -466,20 +463,20 @@ irqreturn_t rz_can_interrupt(int irq, void *dev_id)
 	reg_rx = rz_can_read(priv, RZ_CAN_RSCAN0CFSTSk(priv->k_rx));
 
 	if ((irq == priv->tx_irq) && (reg_tx & RZ_CAN_RSCAN0CFSTSk_CFTXIF)) {
-		reg_tx &= ~RZ_CAN_RSCAN0CFSTSk_CFTXIF;
-		rz_can_write(priv, RZ_CAN_RSCAN0CFSTSk(priv->k_tx), reg_tx);
-
 		stats->tx_packets++;
 		stats->tx_bytes += priv->dlc[priv->tx_echo];
 		can_get_echo_skb(ndev, priv->tx_echo);
 		priv->tx_echo = RZ_CAN_INC_BUF_ID(priv->tx_echo);
 		netif_wake_queue(ndev);
+
+		reg_tx &= ~RZ_CAN_RSCAN0CFSTSk_CFTXIF;
+		rz_can_write(priv, RZ_CAN_RSCAN0CFSTSk(priv->k_tx), reg_tx);
 	}
 
 	if ((irq == priv->rx_irq) && (reg_rx & RZ_CAN_RSCAN0CFSTSk_CFRXIF)) {
+		rz_can_rx_pkt(ndev);
 		reg_rx &= ~RZ_CAN_RSCAN0CFSTSk_CFRXIF;
 		rz_can_write(priv, RZ_CAN_RSCAN0CFSTSk(priv->k_rx), reg_rx);
-		rz_can_rx_pkt(ndev);
 	}
 
 	if (irq == priv->err_irq_g) {
@@ -681,7 +678,7 @@ static void rz_can_stop(struct net_device *ndev)
 	reg |= RZ_CAN_RSCAN0GCTR_GSLPR;
 	rz_can_write(priv, RZ_CAN_RSCAN0GCTR, reg);
 
-	/* From channel reste mode to channel stop mode */
+	/* From channel reset mode to channel stop mode */
 	reg = rz_can_read(priv, RZ_CAN_RSCAN0CmCTR(priv->m));
 	reg |= RZ_CAN_RSCAN0CmCTR_CSLPR;
 	rz_can_write(priv, RZ_CAN_RSCAN0CmCTR(priv->m), reg);

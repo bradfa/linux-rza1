@@ -71,9 +71,11 @@ enum {
 
 #define RZ_CAN_RSCAN0CmCTR(m)		(0x0004 + ((m) * 0x0010))
 #define RZ_CAN_RSCAN0CmCTR_CSLPR	BIT(2)
+#define RZ_CAN_RSCAN0CmCTR_BEIE		BIT(8)
 #define RZ_CAN_RSCAN0CmCTR_EWIE		BIT(9)
 #define RZ_CAN_RSCAN0CmCTR_EPIE		BIT(10)
 #define RZ_CAN_RSCAN0CmCTR_BOEIE	BIT(11)
+#define RZ_CAN_RSCAN0CmCTR_OLIE		BIT(13)
 
 #define RZ_CAN_RSCAN0CmCTR_CHMDC_M	0x00000003
 #define RZ_CAN_RSCAN0CmCTR_CHMDC(x)	(((x) & 0x03) << 0)
@@ -320,6 +322,14 @@ static void rz_can_rx_pkt(struct net_device *ndev)
 	stats->rx_bytes += cf->can_dlc;
 }
 
+static void rz_can_tx_failure_cleanup(struct net_device *ndev)
+{
+	int i;
+
+	for (i = 0; i < RZ_CAN_TX_ECHO_SKB_MAX; i++)
+		can_free_echo_skb(ndev, i);
+}
+
 static void rz_can_err(struct net_device *ndev)
 {
 	struct rz_can_priv *priv = netdev_priv(ndev);
@@ -430,11 +440,12 @@ static void rz_can_err(struct net_device *ndev)
 
 	if (reg & RZ_CAN_RSCAN0CmERFL_BOEF) {
 		netdev_dbg(priv->ndev, "Bus-off entry interrupt\n");
-		//tx_failure_cleanup(ndev);
+		rz_can_tx_failure_cleanup(ndev);
 		priv->can.state = CAN_STATE_BUS_OFF;
 		cf->can_id |= CAN_ERR_BUSOFF;
 		reg &= ~RZ_CAN_RSCAN0CmERFL_BOEF;
 		rz_can_write(priv, RZ_CAN_RSCAN0CmERFL(priv->m), reg);
+		can_bus_off(ndev);
 	}
 
 	if (reg & RZ_CAN_RSCAN0CmERFL_OVLF) {
@@ -581,7 +592,8 @@ static int rz_can_start(struct net_device *ndev)
 
 	reg = rz_can_read(priv, RZ_CAN_RSCAN0CmCTR(priv->m));
 	reg |= (RZ_CAN_RSCAN0CmCTR_EPIE | RZ_CAN_RSCAN0CmCTR_EWIE);
-	reg |= RZ_CAN_RSCAN0CmCTR_BOEIE;
+	reg |= (RZ_CAN_RSCAN0CmCTR_BOEIE | RZ_CAN_RSCAN0CmCTR_BEIE);
+	reg |= RZ_CAN_RSCAN0CmCTR_OLIE;
 	rz_can_write(priv, RZ_CAN_RSCAN0CmCTR(priv->m), reg);
 
 	/* Transition to global operating mode */

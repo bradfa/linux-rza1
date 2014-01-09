@@ -148,10 +148,10 @@ struct rz_can_priv {
 	struct can_priv can;	/* must be the first member */
 	struct net_device *ndev;
 	struct clk *clk;
+	spinlock_t skb_lock;
 	void __iomem *base;
-	int dlc[RZ_CAN_TX_ECHO_SKB_MAX];
-	int tx_last;
-	int tx_echo;
+	unsigned int bytes_queued;
+	int frames_queued;
 	int clock_select;
 	int m;
 	int k_rx;
@@ -220,6 +220,7 @@ static int rz_can_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 {
 	struct rz_can_priv *priv = netdev_priv(ndev);
 	struct can_frame *cf = (struct can_frame *)skb->data;
+	unsigned long flags;
 	u8 dlc = cf->can_dlc;
 	canid_t id = cf->can_id;
 	u8 *data = cf->data;
@@ -252,9 +253,8 @@ static int rz_can_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 
 	rz_can_write(priv, RZ_CAN_RSCAN0CFIDk(priv->k_tx), reg);
 
-	priv->dlc[priv->tx_last] = RZ_CAN_RSCAN0CFPTRk_CFDLC(dlc);
 	rz_can_write(priv, RZ_CAN_RSCAN0CFPTRk(priv->k_tx),
-		     priv->dlc[priv->tx_last]);
+		     RZ_CAN_RSCAN0CFPTRk_CFDLC(dlc));
 
 	for (b = 0; b < 2; b++) {
 		reg = 0;
@@ -263,10 +263,12 @@ static int rz_can_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		rz_can_write(priv, RZ_CAN_RSCAN0CFDFbk(priv->k_tx, b), reg);
 	}
 
-	can_put_echo_skb(skb, ndev, priv->tx_last);
+	spin_lock_irqsave(&priv->skb_lock, flags);
+	can_put_echo_skb(skb, ndev, priv->frames_queued++);
+	priv->bytes_queued += dlc;
+	spin_unlock_irqrestore(&priv->skb_lock, flags);
 
 	rz_can_write(priv, RZ_CAN_RSCAN0CFPCTRk(priv->k_tx), 0xff);
-	priv->tx_last = RZ_CAN_INC_BUF_ID(priv->tx_last);
 
 	return 0;
 }
@@ -468,15 +470,21 @@ irqreturn_t rz_can_interrupt(int irq, void *dev_id)
 	struct rz_can_priv *priv = netdev_priv(ndev);
 	struct net_device_stats *stats = &ndev->stats;
 	u32 reg_tx, reg_rx;
+	int i;
 
 	reg_tx = rz_can_read(priv, RZ_CAN_RSCAN0CFSTSk(priv->k_tx));
 	reg_rx = rz_can_read(priv, RZ_CAN_RSCAN0CFSTSk(priv->k_rx));
 
 	if ((irq == priv->tx_irq) && (reg_tx & RZ_CAN_RSCAN0CFSTSk_CFTXIF)) {
-		stats->tx_packets++;
-		stats->tx_bytes += priv->dlc[priv->tx_echo];
-		can_get_echo_skb(ndev, priv->tx_echo);
-		priv->tx_echo = RZ_CAN_INC_BUF_ID(priv->tx_echo);
+		spin_lock(&priv->skb_lock);
+		for (i = 0; i < priv->frames_queued; i++)
+			can_get_echo_skb(ndev, i);
+		stats->tx_bytes += priv->bytes_queued;
+		stats->tx_packets += priv->frames_queued;
+		priv->bytes_queued = 0;
+		priv->frames_queued = 0;
+		spin_unlock(&priv->skb_lock);
+
 		netif_wake_queue(ndev);
 
 		reg_tx &= ~RZ_CAN_RSCAN0CFSTSk_CFTXIF;
@@ -802,8 +810,6 @@ static int rz_can_probe(struct platform_device *pdev)
 	priv->rx_irq = rx_irq;
 	priv->err_irq_m = err_irq_m;
 	priv->err_irq_g = err_irq_g;
-	priv->tx_last = 0;
-	priv->tx_echo = 0;
 	priv->k_tx = RZ_CAN_FIFO_K(priv->m, RZ_CAN_TX_FIFO);
 	priv->k_rx = RZ_CAN_FIFO_K(priv->m, RZ_CAN_RX_FIFO);
 
@@ -815,6 +821,7 @@ static int rz_can_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ndev);
 	SET_NETDEV_DEV(ndev, &pdev->dev);
+	spin_lock_init(&priv->skb_lock);
 
 	err = register_candev(ndev);
 	if (err) {

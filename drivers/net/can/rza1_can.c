@@ -268,10 +268,6 @@ static int rz_can_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	rz_can_write(priv, RZ_CAN_RSCAN0CFPCTRk(priv->k_tx), 0xff);
 	priv->tx_last = RZ_CAN_INC_BUF_ID(priv->tx_last);
 
-	reg = rz_can_read(priv, RZ_CAN_RSCAN0CFCCk(priv->k_rx));
-	reg |= RZ_CAN_RSCAN0CFCCk_CFE;
-	rz_can_write(priv, RZ_CAN_RSCAN0CFCCk(priv->k_rx), reg);
-
 	return 0;
 }
 
@@ -305,7 +301,7 @@ static void rz_can_rx_pkt(struct net_device *ndev)
 
 	for (b = 0; b < 2; b++) {
 		reg = rz_can_read(priv, RZ_CAN_RSCAN0CFDFbk(priv->k_rx, b));
-		//printk(KERN_EMERG "[CAN-rx-pkt] 0x%08X\n", reg);
+		printk(KERN_EMERG "[CAN-rx-pkt] 0x%08X\n", reg);
 		for (s = 0; s < 4; s++)	{
 			cf->data[(b * 4) + s] = reg & 0x000000ff;
 			reg >>= 8;
@@ -574,7 +570,7 @@ static int rz_can_start(struct net_device *ndev)
 	reg |= RZ_CAN_RSCAN0CFCCk_CFIM;
 	reg |= RZ_CAN_RSCAN0CFCCk_CFDC(RZ_CAN_CFCD_FULL);
 	reg |= RZ_CAN_RSCAN0CFCCk_CFRXIE;
-	reg |= RZ_CAN_RSCAN0CFCCk_CFE;
+//	reg |= RZ_CAN_RSCAN0CFCCk_CFE;
 	rz_can_write(priv, RZ_CAN_RSCAN0CFCCk(priv->k_rx), reg);
 
 	/* TX: transmit/receive FIFO buffer (full depth, IRQ for each ptk) */
@@ -609,6 +605,11 @@ static int rz_can_start(struct net_device *ndev)
 	rz_can_write(priv, RZ_CAN_RSCAN0CmCTR(priv->m), reg);
 
 	priv->can.state = CAN_STATE_ERROR_ACTIVE;
+
+	reg = rz_can_read(priv, RZ_CAN_RSCAN0CFCCk(priv->k_rx));
+	reg |= RZ_CAN_RSCAN0CFCCk_CFE;
+	rz_can_write(priv, RZ_CAN_RSCAN0CFCCk(priv->k_rx), reg);
+
 
 	return 0;
 }

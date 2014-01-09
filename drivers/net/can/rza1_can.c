@@ -280,42 +280,45 @@ static void rz_can_rx_pkt(struct net_device *ndev)
 	int b, s;
 	u32 reg;
 
-	skb = alloc_can_skb(ndev, &cf);
-	if (!skb) {
-		stats->rx_dropped++;
-		return;
-	}
+	while (!(rz_can_read(priv, RZ_CAN_RSCAN0CFSTSk(priv->k_rx)) & RZ_CAN_RSCAN0CFSTSk_CFEMP)) {
 
-	reg = rz_can_read(priv, RZ_CAN_RSCAN0CFIDk(priv->k_rx));
-
-	if (reg & RZ_CAN_RSCAN0CFIDk_CFIDE) {
-		/* Extended ID */
-		cf->can_id = (reg & CAN_EFF_MASK) | CAN_EFF_FLAG;
-	} else {
-		/* Standard ID */
-		cf->can_id = (reg & CAN_SFF_MASK);
-	}
-
-	if (reg & RZ_CAN_RSCAN0CFIDk_CFRTR)
-		cf->can_id |= CAN_RTR_FLAG;
-
-	for (b = 0; b < 2; b++) {
-		reg = rz_can_read(priv, RZ_CAN_RSCAN0CFDFbk(priv->k_rx, b));
-		printk(KERN_EMERG "[CAN-rx-pkt] 0x%08X\n", reg);
-		for (s = 0; s < 4; s++)	{
-			cf->data[(b * 4) + s] = reg & 0x000000ff;
-			reg >>= 8;
+		skb = alloc_can_skb(ndev, &cf);
+		if (!skb) {
+			stats->rx_dropped++;
+			return;
 		}
+
+		reg = rz_can_read(priv, RZ_CAN_RSCAN0CFIDk(priv->k_rx));
+
+		if (reg & RZ_CAN_RSCAN0CFIDk_CFIDE) {
+			/* Extended ID */
+			cf->can_id = (reg & CAN_EFF_MASK) | CAN_EFF_FLAG;
+		} else {
+			/* Standard ID */
+			cf->can_id = (reg & CAN_SFF_MASK);
+		}
+
+		if (reg & RZ_CAN_RSCAN0CFIDk_CFRTR)
+			cf->can_id |= CAN_RTR_FLAG;
+
+		for (b = 0; b < 2; b++) {
+			reg = rz_can_read(priv, RZ_CAN_RSCAN0CFDFbk(priv->k_rx, b));
+			printk(KERN_EMERG "[CAN-rx-pkt] 0x%08X\n", reg);
+			for (s = 0; s < 4; s++)	{
+				cf->data[(b * 4) + s] = reg & 0x000000ff;
+				reg >>= 8;
+			}
+		}
+
+		reg = rz_can_read(priv, RZ_CAN_RSCAN0CFPTRk(priv->k_rx));
+		cf->can_dlc = RZ_CAN_RSCAN0CFPTRk_CFDLC_G(reg);
+
+		rz_can_write(priv, RZ_CAN_RSCAN0CFPCTRk(priv->k_rx), 0xff);
+		netif_rx(skb);
+
+		stats->rx_packets++;
+		stats->rx_bytes += cf->can_dlc;
 	}
-
-	reg = rz_can_read(priv, RZ_CAN_RSCAN0CFPTRk(priv->k_rx));
-	cf->can_dlc = RZ_CAN_RSCAN0CFPTRk_CFDLC_G(reg);
-
-	rz_can_write(priv, RZ_CAN_RSCAN0CFPCTRk(priv->k_rx), 0xff);
-	netif_rx(skb);
-
-	stats->rx_packets++;
-	stats->rx_bytes += cf->can_dlc;
 }
 
 static void rz_can_tx_failure_cleanup(struct net_device *ndev)

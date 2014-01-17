@@ -17,6 +17,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/mutex.h>
+#include <linux/delay.h>
 #include <mach/rza1.h>
 
 #define GPIO_CHIP_NAME "RZA1_INTERNAL_PFC"
@@ -282,6 +283,40 @@ int rza1_pfc_pin_assign(enum pfc_pin_number pinnum, enum pfc_mode mode,
 	return set_mode(port, bit, mode);
 }
 EXPORT_SYMBOL(rza1_pfc_pin_assign);
+
+void rza1_pfc_pin_lvds(void)
+{	
+	u16 tmp;
+
+	tmp = readw(RZA1_BASE + PMC(5));
+	tmp &= ~0x00FFu;
+	writew(tmp, RZA1_BASE + PMC(5));
+
+	/* dummy */
+	tmp = readw(RZA1_BASE + PMC(5));
+	msleep(1);
+
+	tmp = readw(RZA1_BASE + PFCAE(5));
+	tmp &= ~0x00FFu;
+	writew(tmp, RZA1_BASE + PFCAE(5));
+
+	tmp = readw(RZA1_BASE + PFCE(5));
+	tmp &= ~0x00FFu;
+	writew(tmp, RZA1_BASE + PFCE(5));
+	
+	tmp = readw(RZA1_BASE + PFC(5));
+	tmp &= ~0x00FFu;
+	writew(tmp, RZA1_BASE + PFC(5));
+
+	tmp = readw(RZA1_BASE + PIPC(5));
+	tmp &= ~0x00FFu;
+	writew(tmp, RZA1_BASE + PIPC(5));
+
+	tmp = readw(RZA1_BASE + PMC(5));
+	tmp |= 0x00FFu;
+	writew(tmp, RZA1_BASE + PMC(5));
+}
+EXPORT_SYMBOL(rza1_pfc_pin_lvds);
 
 /*
  * @pinnum: a pin number. 

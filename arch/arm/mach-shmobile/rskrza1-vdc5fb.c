@@ -320,13 +320,13 @@ static struct fb_videomode videomode_lvds = {
 	.xres		= 1024,
 	.yres		= 768,
 	.pixclock	= PIXCLOCK(P1CLK, 1),
-	.left_margin	= 32,	/* 160, */
-	.right_margin	= 152,	/* 24, */
-	.upper_margin	= 29,
-	.lower_margin	= 3,
-	.hsync_len	= 136,
-	.vsync_len	= 6,
-	.sync		= 0,
+	.left_margin	= 24,	/* 32 */
+	.right_margin	= 160,	/* 152 */
+	.upper_margin	= 24,   /* 29 */
+	.lower_margin	= 8,    /* 3 */
+	.hsync_len	= 136,  /* 136 */
+	.vsync_len	= 6,    /* 6 */
+	.sync		= (FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT),
 	.vmode		= FB_VMODE_NONINTERLACED,
 	.flag		= 0,
 };
@@ -369,14 +369,27 @@ static struct vdc5fb_pdata vdc5fb_pdata_lvds = {
 
 static int vdc5fb_pinmux_lvds(struct platform_device *pdev)
 {
-	rza1_pfc_pin_assign(P5_0, ALT1, DIR_OUT);
-	rza1_pfc_pin_assign(P5_1, ALT1, DIR_OUT);
-	rza1_pfc_pin_assign(P5_2, ALT1, DIR_OUT);
-	rza1_pfc_pin_assign(P5_3, ALT1, DIR_OUT);
-	rza1_pfc_pin_assign(P5_4, ALT1, DIR_OUT);
-	rza1_pfc_pin_assign(P5_5, ALT1, DIR_OUT);
-	rza1_pfc_pin_assign(P5_6, ALT1, DIR_OUT);
-	rza1_pfc_pin_assign(P5_7, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_0, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_1, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_2, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_3, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_4, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_5, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_6, ALT1, DIR_OUT);
+//	rza1_pfc_pin_assign(P5_7, ALT1, DIR_OUT);
+//
+//
+//	rza1_pfc_pin_assign(P5_0, ALT1, DIR_PIPC);
+//	rza1_pfc_pin_assign(P5_1, ALT1, DIR_PIPC);
+//	rza1_pfc_pin_assign(P5_2, ALT1, DIR_PIPC);
+//	rza1_pfc_pin_assign(P5_3, ALT1, DIR_PIPC);
+//	rza1_pfc_pin_assign(P5_4, ALT1, DIR_PIPC);
+//	rza1_pfc_pin_assign(P5_5, ALT1, DIR_PIPC);
+//	rza1_pfc_pin_assign(P5_6, ALT1, DIR_PIPC);
+//	rza1_pfc_pin_assign(P5_7, ALT1, DIR_PIPC);
+
+	printk(KERN_EMERG "*** --->>> going to set pins\n");
+	rza1_pfc_pin_lvds();
 
 	return 0;
 }

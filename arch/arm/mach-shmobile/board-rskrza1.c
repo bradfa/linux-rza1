@@ -267,27 +267,27 @@ void __init rskrza1_init(void)
 	rza1_devices_setup();
 
 	/* GPIO settings. */
-#if defined(CONFIG_SND_SCUX_GENMAI)
-	/* Audio Codec(WM8978) is use SSIF0(P4_4-P4_7) */
-	rza1_pfc_pin_bidirection(P4_4, true);      /* SSISCK0 */
-	rza1_pfc_pin_assign(P4_4, ALT5, DIR_PIPC); /* SSISCK0 */
-	rza1_pfc_pin_bidirection(P4_5, true);      /* SSIWS0 */
-	rza1_pfc_pin_assign(P4_5, ALT5, DIR_PIPC); /* SSIWS0 */
-	rza1_pfc_pin_bidirection(P4_6, true);      /* SSIRxD0 */
-	rza1_pfc_pin_assign(P4_6, ALT5, DIR_PIPC); /* SSIRxD0 */
-	rza1_pfc_pin_bidirection(P4_7, true);      /* SSITxD0 */
-	rza1_pfc_pin_assign(P4_7, ALT5, DIR_PIPC); /* SSITxD0 */
-#else
-	rza1_pfc_pin_bidirection(P4_4, true);      /* SPI RSPCK1 */
-	rza1_pfc_pin_assign(P4_4, ALT2, DIR_PIPC); /* SPI RSPCK1 */
-	rza1_pfc_pin_bidirection(P4_5, true);      /* SPI SSL10 */
-	rza1_pfc_pin_assign(P4_5, ALT2, DIR_PIPC); /* SPI SSL10 */
-	rza1_pfc_pin_bidirection(P4_6, true);      /* SPI MOSI1 */
-	rza1_pfc_pin_assign(P4_6, ALT2, DIR_PIPC); /* SPI MOSI1 */
-	rza1_pfc_pin_bidirection(P4_7, true);      /* SPI MISO1 */
-	rza1_pfc_pin_assign(P4_7, ALT2, DIR_PIPC); /* SPI MISO1 */
-#endif
-
+//#if defined(CONFIG_SND_SCUX_GENMAI)
+//	/* Audio Codec(WM8978) is use SSIF0(P4_4-P4_7) */
+//	rza1_pfc_pin_bidirection(P4_4, true);      /* SSISCK0 */
+//	rza1_pfc_pin_assign(P4_4, ALT5, DIR_PIPC); /* SSISCK0 */
+//	rza1_pfc_pin_bidirection(P4_5, true);      /* SSIWS0 */
+//	rza1_pfc_pin_assign(P4_5, ALT5, DIR_PIPC); /* SSIWS0 */
+//	rza1_pfc_pin_bidirection(P4_6, true);      /* SSIRxD0 */
+//	rza1_pfc_pin_assign(P4_6, ALT5, DIR_PIPC); /* SSIRxD0 */
+//	rza1_pfc_pin_bidirection(P4_7, true);      /* SSITxD0 */
+//	rza1_pfc_pin_assign(P4_7, ALT5, DIR_PIPC); /* SSITxD0 */
+//#else
+//	rza1_pfc_pin_bidirection(P4_4, true);      /* SPI RSPCK1 */
+//	rza1_pfc_pin_assign(P4_4, ALT2, DIR_PIPC); /* SPI RSPCK1 */
+//	rza1_pfc_pin_bidirection(P4_5, true);      /* SPI SSL10 */
+//	rza1_pfc_pin_assign(P4_5, ALT2, DIR_PIPC); /* SPI SSL10 */
+//	rza1_pfc_pin_bidirection(P4_6, true);      /* SPI MOSI1 */
+//	rza1_pfc_pin_assign(P4_6, ALT2, DIR_PIPC); /* SPI MOSI1 */
+//	rza1_pfc_pin_bidirection(P4_7, true);      /* SPI MISO1 */
+//	rza1_pfc_pin_assign(P4_7, ALT2, DIR_PIPC); /* SPI MISO1 */
+//#endif
+//
 	/* ADC */
 	rza1_pfc_pin_assign(P1_8, ALT1, DIR_PIPC);	/* AN0 */
 	rza1_pfc_pin_assign(P1_9, ALT1, DIR_PIPC);	/* AN1 */
@@ -299,25 +299,25 @@ void __init rskrza1_init(void)
 /*	rza1_pfc_pin_assign(P0_1, PMODE, DIR_IN);	*/
 /*	rza1_pfc_pin_assign(P7_0, PMODE, DIR_IN);	*/
 
-#if defined(CONFIG_SND_SCUX_GENMAI)
-	/* Audio Codec(WM8978) is use RSPCK4 */
-	rza1_pfc_pin_assign(P4_0, ALT7, DIR_PIPC);	/* RSPCK4*/
-	rza1_pfc_pin_assign(P4_1, ALT7, DIR_PIPC);	/* SSL40 */
-	rza1_pfc_pin_assign(P4_2, ALT7, DIR_PIPC);	/* MOSI4 */
-#else
-	/* set MMCIF pfc configuration */
-	rza1_pfc_pin_assign(P3_8, ALT8, DIR_PIPC);	/* MMC_CD */
-	rza1_pfc_pin_assign(P3_10, ALT8, DIR_PIPC);	/* MMC_D1 */
-	rza1_pfc_pin_assign(P3_11, ALT8, DIR_PIPC);	/* MMC_D0 */
-	rza1_pfc_pin_assign(P3_12, ALT8, DIR_PIPC);	/* MMC_CLK */
-	rza1_pfc_pin_assign(P3_13, ALT8, DIR_PIPC);	/* MMC_CMD */
-	rza1_pfc_pin_assign(P3_14, ALT8, DIR_PIPC);	/* MMC_D3 */
-	rza1_pfc_pin_assign(P3_15, ALT8, DIR_PIPC);	/* MMC_D2 */
-	rza1_pfc_pin_assign(P4_0, ALT8, DIR_PIPC);	/* MMC_D4 */
-	rza1_pfc_pin_assign(P4_1, ALT8, DIR_PIPC);	/* MMC_D5 */
-	rza1_pfc_pin_assign(P4_2, ALT8, DIR_PIPC);	/* MMC_D6 */
-	rza1_pfc_pin_assign(P4_3, ALT8, DIR_PIPC);	/* MMC_D7 */
-#endif
+//#if defined(CONFIG_SND_SCUX_GENMAI)
+//	/* Audio Codec(WM8978) is use RSPCK4 */
+//	rza1_pfc_pin_assign(P4_0, ALT7, DIR_PIPC);	/* RSPCK4*/
+//	rza1_pfc_pin_assign(P4_1, ALT7, DIR_PIPC);	/* SSL40 */
+//	rza1_pfc_pin_assign(P4_2, ALT7, DIR_PIPC);	/* MOSI4 */
+//#else
+//	/* set MMCIF pfc configuration */
+//	rza1_pfc_pin_assign(P3_8, ALT8, DIR_PIPC);	/* MMC_CD */
+//	rza1_pfc_pin_assign(P3_10, ALT8, DIR_PIPC);	/* MMC_D1 */
+//	rza1_pfc_pin_assign(P3_11, ALT8, DIR_PIPC);	/* MMC_D0 */
+//	rza1_pfc_pin_assign(P3_12, ALT8, DIR_PIPC);	/* MMC_CLK */
+//	rza1_pfc_pin_assign(P3_13, ALT8, DIR_PIPC);	/* MMC_CMD */
+//	rza1_pfc_pin_assign(P3_14, ALT8, DIR_PIPC);	/* MMC_D3 */
+//	rza1_pfc_pin_assign(P3_15, ALT8, DIR_PIPC);	/* MMC_D2 */
+//	rza1_pfc_pin_assign(P4_0, ALT8, DIR_PIPC);	/* MMC_D4 */
+//	rza1_pfc_pin_assign(P4_1, ALT8, DIR_PIPC);	/* MMC_D5 */
+//	rza1_pfc_pin_assign(P4_2, ALT8, DIR_PIPC);	/* MMC_D6 */
+//	rza1_pfc_pin_assign(P4_3, ALT8, DIR_PIPC);	/* MMC_D7 */
+//#endif
 
 #if defined(CONFIG_MMC)
 	/* set SDHI0 pfc configuration */

@@ -310,17 +310,17 @@ static int vdc5fb_pinmux_vga(struct platform_device *pdev)
 static struct fb_videomode videomode_wvga_lcd_kit_b01 = {
 	.name		= "WVGA",
 	.refresh	= 60,	/* unsued */
-	.xres		= 800,
-	.yres		= 480,
-	.pixclock	= PIXCLOCK(P1CLK, 2),
-	.left_margin	= 0,
-	.right_margin	= 64,
-	.upper_margin	= 18,
-	.lower_margin	= 18,
-	.hsync_len	= 128,
-	.vsync_len	= 4,
-	.sync		= 0,	/* to be fixed */
-	.vmode		= 0,	/* to be fixed */
+	.xres		= 480,
+	.yres		= 272,
+	.pixclock	= PIXCLOCK(P1CLK, 7),
+	.left_margin	= 43,
+	.right_margin	= 8,
+	.upper_margin	= 3,
+	.lower_margin	= 3,
+	.hsync_len	= 41,
+	.vsync_len	= 10,
+	.sync		= (FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT),
+	.vmode		= FB_VMODE_NONINTERLACED, 
 	.flag		= 0,	/* to be fixed */
 };
 
@@ -331,20 +331,20 @@ static struct vdc5fb_pdata vdc5fb_pdata_ch0_lcd_kit_b01 = {
 	.name			= "LCD-KIT-B01",
 	.videomode		= &videomode_wvga_lcd_kit_b01,
 	.panel_icksel		= ICKSEL_P1CLK,
-	.bpp			= 32,
+	.bpp			= 16,
 	.panel_width		= 184,	/* mm, unused */
 	.panel_height		= 132,	/* mm, unused */
 	.flm_max		= 1,
-	.out_format		= OUT_FORMAT_RGB666,
+	.out_format		= OUT_FORMAT_RGB565,
 	.use_lvds		= 0,
 	.tcon_sel		= {
-		[LCD_TCON0]	= TCON_SEL_UNUSED,	/* RESET */
-		[LCD_TCON1]	= TCON_SEL_UNUSED,	/* INT */
-		[LCD_TCON2]	= TCON_SEL_DE,		/* DE */
-		[LCD_TCON3]	= TCON_SEL_STH,		/* HSYNC(NC) */
-		[LCD_TCON4]	= TCON_SEL_STVA,	/* VSYNC(NC) */
-		[LCD_TCON5]	= TCON_SEL_UNUSED,	/* NC */
-		[LCD_TCON6]	= TCON_SEL_UNUSED,	/* NC */
+		[LCD_TCON0]	= TCON_SEL_DE,
+		[LCD_TCON1]	= TCON_SEL_UNUSED,
+		[LCD_TCON2]	= TCON_SEL_UNUSED,
+		[LCD_TCON3]	= TCON_SEL_UNUSED,
+		[LCD_TCON4]	= TCON_SEL_UNUSED,
+		[LCD_TCON5]	= TCON_SEL_UNUSED,
+		[LCD_TCON6]	= TCON_SEL_UNUSED,
 	},
 	.pinmux			= vdc5fb_pinmux_lcd_kit_b01,
 	.reset			= vdc5fb_reset_lcd_kit_b01,
@@ -374,16 +374,46 @@ static struct vdc5fb_pdata vdc5fb_pdata_ch1_lcd_kit_b01 = {
 
 static int vdc5fb_pinmux_lcd_kit_b01(struct platform_device *pdev)
 {
-	vdc5fb_pinmux_lcd(pdev, 18);
+	struct vdc5fb_pdata *pdata = (struct vdc5fb_pdata *)pdev->dev.platform_data;
 
 	if (pdev->id == 0) {
-		/* RIIC0SCL and RIIC0SDA should be initialized by I2C */
+		printk(KERN_EMERG "--------------------------->>\n");
+		/* LCD0_DATA0 - LCD0_DATA15 */
+		rza1_pfc_pin_assign(P3_8, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P3_9, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P3_10, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P3_11, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P3_12, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P3_13, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P3_14, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P3_15, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_0, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_1, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_2, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_3, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_4, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_5, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_6, ALT1, DIR_PIPC);
+		rza1_pfc_pin_assign(P4_7, ALT1, DIR_PIPC);
 
-		/* LCD0_TCON0 (RESET) */
-		/* This should be initailized by pdata->reset func, */
-
-		/* LCD0_TCON1 (INT) */
-		rza1_pfc_pin_assign(P11_13, PMODE, DIR_IN);
+//		/* LCD0_CLK (CLOCK) */
+		rza1_pfc_pin_assign(P3_0, ALT1, DIR_PIPC);
+//		/* LCD0_TCON0 - LCD0_TCON6 */
+		if (pdata->tcon_sel[LCD_TCON0] != TCON_SEL_UNUSED)
+			rza1_pfc_pin_assign(P3_1, ALT1, DIR_PIPC);
+//		if (pdata->tcon_sel[LCD_TCON1] != TCON_SEL_UNUSED)
+//			rza1_pfc_pin_assign(P3_2, ALT1, DIR_PIPC);
+//		if (pdata->tcon_sel[LCD_TCON2] != TCON_SEL_UNUSED)
+//			rza1_pfc_pin_assign(P3_3, ALT1, DIR_PIPC);
+//		if (pdata->tcon_sel[LCD_TCON3] != TCON_SEL_UNUSED)
+//			rza1_pfc_pin_assign(P3_4, ALT1, DIR_PIPC);
+//		if (pdata->tcon_sel[LCD_TCON4] != TCON_SEL_UNUSED)
+//			rza1_pfc_pin_assign(P3_5, ALT1, DIR_PIPC);
+//		if (pdata->tcon_sel[LCD_TCON5] != TCON_SEL_UNUSED)
+//			rza1_pfc_pin_assign(P3_6, ALT1, DIR_PIPC);
+//		if (pdata->tcon_sel[LCD_TCON6] != TCON_SEL_UNUSED)
+//			rza1_pfc_pin_assign(P3_7, ALT1, DIR_PIPC);
+//
 		return 0;
 	}
 #if (VDC5FB_NUM_CH > 1)

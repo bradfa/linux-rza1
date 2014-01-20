@@ -306,7 +306,7 @@ void __init rskrza1_init(void)
 int rskrza1_board_can_pfc_assign(int channel)
 {
 	if (channel == 1) {
-		rza1_pfc_pin_assign(P5_9, ALT5, DIR_PIPC);
+		rza1_pfc_pin_assign(P1_4, ALT3, DIR_PIPC);
 		rza1_pfc_pin_assign(P5_10, ALT5, DIR_PIPC);
 	}
 

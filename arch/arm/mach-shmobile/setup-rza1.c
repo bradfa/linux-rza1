@@ -869,7 +869,7 @@ static struct platform_device dma_device = {
 static struct platform_device *rza1_devices[] __initdata = {
 	&i2c_device0,
 	&i2c_device1,
-	&i2c_device2,
+//	&i2c_device2,
 	&i2c_device3,
 	&r8a66597_usb_host0_device,
 	&r8a66597_usb_host1_device,

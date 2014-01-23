@@ -316,18 +316,21 @@ static int vdc5fb_pinmux_vga(struct platform_device *pdev)
 
 static struct fb_videomode videomode_lvds = {
 	.name		= "LVDS-VM",
-	.refresh	= 61,	/* calculated */
-	.xres		= 1024,
-	.yres		= 768,
-	.pixclock	= PIXCLOCK(P1CLK, 1),
-	.left_margin	= 24,	/* 32 */
-	.right_margin	= 160,	/* 152 */
-	.upper_margin	= 24,   /* 29 */
-	.lower_margin	= 8,    /* 3 */
-	.hsync_len	= 136,  /* 136 */
-	.vsync_len	= 6,    /* 6 */
-	.sync		= (FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT),
-	.vmode		= FB_VMODE_NONINTERLACED,
+	.refresh	= 60,	/* calculated */
+	.xres		= 640,
+	.yres		= 480,
+	.pixclock	= 31250,
+//	.pixclock	= PIXCLOCK(P1CLK, 2),
+	.left_margin	= 114,	/* 32 */
+	.right_margin	= 16,	/* 152 */
+	.upper_margin	= 32,   /* 29 */
+	.lower_margin	= 125,    /* 3 */
+	.hsync_len	= 30,  /* 136 */
+	.vsync_len	= 3,    /* 6 */
+	.sync		= 0,
+//	.sync		= (FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT),
+//	.vmode		= FB_VMODE_NONINTERLACED,
+	.vmode		= 0,
 	.flag		= 0,
 };
 
@@ -338,7 +341,7 @@ static struct vdc5fb_pdata vdc5fb_pdata_lvds = {
 	.videomode		= &videomode_lvds,
 	.panel_ocksel		= OCKSEL_PLL_DIV7,
 	.panel_icksel		= 0,
-	.bpp			= 16,
+	.bpp			= 32,
 	.panel_width		= 0,	/* unused */
 	.panel_height		= 0,	/* unused */
 	.flm_max		= 1,
@@ -348,10 +351,10 @@ static struct vdc5fb_pdata vdc5fb_pdata_lvds = {
 		.lvds_in_clk_sel	= VDC5_LVDS_INCLK_SEL_PERI,     /* The clock input to frequency divider 1 */
 		.lvds_idiv_set		= VDC5_LVDS_NDIV_4,             /* NIDIV */
 		.lvds_pll_tst		= (uint16_t)8u,                 /* LVDSPLL_TST (LVDS PLL internal parameters) */
-		.lvds_odiv_set		= VDC5_LVDS_NDIV_1,             /* NODIV */
-		.lvds_pll_fd		= (uint16_t)273u,               /* NFD */
-		.lvds_pll_rd		= (uint16_t)(5u-1u),            /* NRD */
-		.lvds_pll_od		= VDC5_LVDS_PLL_NOD_2,          /* NOD */
+		.lvds_odiv_set		= VDC5_LVDS_NDIV_4,             /* NODIV */
+		.lvds_pll_fd		= (uint16_t)85u,               /* NFD */
+		.lvds_pll_rd		= (uint16_t)(1u-1u),            /* NRD */
+		.lvds_pll_od		= VDC5_LVDS_PLL_NOD_8,          /* NOD */
 	},
 	.tcon_sel		= {
 		[LCD_TCON0]	= TCON_SEL_UNUSED,
@@ -377,8 +380,8 @@ static int vdc5fb_pinmux_lvds(struct platform_device *pdev)
 //	rza1_pfc_pin_assign(P5_5, ALT1, DIR_OUT);
 //	rza1_pfc_pin_assign(P5_6, ALT1, DIR_OUT);
 //	rza1_pfc_pin_assign(P5_7, ALT1, DIR_OUT);
-//
-//
+
+
 //	rza1_pfc_pin_assign(P5_0, ALT1, DIR_PIPC);
 //	rza1_pfc_pin_assign(P5_1, ALT1, DIR_PIPC);
 //	rza1_pfc_pin_assign(P5_2, ALT1, DIR_PIPC);
@@ -387,8 +390,8 @@ static int vdc5fb_pinmux_lvds(struct platform_device *pdev)
 //	rza1_pfc_pin_assign(P5_5, ALT1, DIR_PIPC);
 //	rza1_pfc_pin_assign(P5_6, ALT1, DIR_PIPC);
 //	rza1_pfc_pin_assign(P5_7, ALT1, DIR_PIPC);
-
-	printk(KERN_EMERG "*** --->>> going to set pins\n");
+//
+//	printk(KERN_EMERG "*** --->>> going to set pins\n");
 	rza1_pfc_pin_lvds();
 
 	return 0;

@@ -311,90 +311,6 @@ static int vdc5fb_set_panel_clock(struct vdc5fb_priv *priv,
 
 /************************************************************************/
 
-//static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
-//{
-//	struct vdc5fb_pdata *pdata = priv_to_pdata(priv);
-//	struct vdc5fb_lvds_info *lvds = &pdata->lvds;
-//	u32 tmp;
-//	int t;
-//
-//	printk(KERN_EMERG "*** --->>> Enabling LVDS\n");
-//
-//	tmp = vdc5fb_read(priv, SYSCNT_PANEL_CLK);
-//	tmp &= ~PANEL_ICKEN;
-//	vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
-//
-//	/* LCLKSELR: LVDS clock select register */
-//	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
-//	tmp &= ~LVDS_LCLKSELR_MASK;
-//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-//
-//	/* The clock input to frequency divider 1 */
-//	tmp |= LVDS_SET_IN_CLK_SEL(lvds->lvds_in_clk_sel);
-//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-//
-//	/* The frequency dividing value (NIDIV) for frequency divider 1 */
-//	tmp |= LVDS_SET_IDIV(lvds->lvds_idiv_set);
-//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-//
-//
-//	/* The frequency dividing value (NODIV) for frequency divider 2 */
-//	tmp |= LVDS_SET_ODIV(lvds->lvds_odiv_set);
-//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-//
-//	/* A channel in VDC5 whose data is to be output through the LVDS */
-//	if (priv->id != 0)
-//		tmp |= LVDS_VDC_SEL;
-//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-//
-//	mdelay(1);
-//
-//	/* LPLLSETR: LVDS PLL setting register */
-//	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
-//	tmp &= ~LVDS_LPLLSETR_MASK;
-//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
-//
-//	/* The frequency dividing value (NFD) for the feedback frequency */
-//	tmp |= LVDS_SET_FD(lvds->lvds_pll_fd);
-//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
-//
-//	/* The frequency dividing value (NRD) for the input frequency */
-//	tmp |= LVDS_SET_RD(lvds->lvds_pll_rd);
-//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
-//
-//	/* The frequency dividing value (NOD) for the output frequency */
-//	tmp |= LVDS_SET_OD(lvds->lvds_pll_od);
-//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
-//
-//
-//	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
-//	/* Internal parameter setting for LVDS PLL */
-//	tmp |= LVDS_SET_TST(lvds->lvds_pll_tst);
-//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-//
-//	mdelay(1);
-//
-//	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
-//	/* Controls power-down for the LVDS PLL: Normal operation */
-//	tmp &= ~LVDS_PLL_PD;
-//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
-//
-//	msleep(1);
-//
-//	while(1) {
-//		if ((vdc5fb_lvds_read(priv, LPLLMONR) & LVDS_PLL_LD) != 0)
-//			break;
-//	}
-//
-//	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
-//	tmp |= LVDS_CLK_EN;
-//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-//
-//
-//	return 0;
-//}
-//
-
 static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
 {
 	struct vdc5fb_pdata *pdata = priv_to_pdata(priv);
@@ -407,22 +323,6 @@ static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
 	tmp = vdc5fb_read(priv, SYSCNT_PANEL_CLK);
 	tmp &= ~PANEL_ICKEN;
 	vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
-
-	/* Output from the LVDS PLL is disabled. */
-	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
-	tmp &= ~LVDS_CLK_EN;
-	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
-
-	/* Controls power-down for the LVDS PLL: Power-down state */
-	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
-	tmp |= LVDS_PLL_PD;
-	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
-
-	/* This is a delay (1 usec) while waiting for PLL PD to settle. */
-//	udelay(1);
-	for (t = 0; t < 103; t++)
-		;
-	mdelay(1);
 
 	/* LCLKSELR: LVDS clock select register */
 	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
@@ -437,9 +337,6 @@ static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
 	tmp |= LVDS_SET_IDIV(lvds->lvds_idiv_set);
 	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
 
-	/* Internal parameter setting for LVDS PLL */
-	tmp |= LVDS_SET_TST(lvds->lvds_pll_tst);
-	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
 
 	/* The frequency dividing value (NODIV) for frequency divider 2 */
 	tmp |= LVDS_SET_ODIV(lvds->lvds_odiv_set);
@@ -449,6 +346,8 @@ static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
 	if (priv->id != 0)
 		tmp |= LVDS_VDC_SEL;
 	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+
+	mdelay(1);
 
 	/* LPLLSETR: LVDS PLL setting register */
 	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
@@ -467,18 +366,23 @@ static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
 	tmp |= LVDS_SET_OD(lvds->lvds_pll_od);
 	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
 
+
+	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
+	/* Internal parameter setting for LVDS PLL */
+	tmp |= LVDS_SET_TST(lvds->lvds_pll_tst);
+	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+
+	mdelay(1);
+
+	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
 	/* Controls power-down for the LVDS PLL: Normal operation */
 	tmp &= ~LVDS_PLL_PD;
 	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
 
-	/* This is a delay (1 usec) while waiting for PLL PD to settle. */
-	for (t = 0; t < 103; t++)
-		;
-	mdelay(1);
+	msleep(1);
 
-	for (t = 0; t < 10; t++) {
-		mdelay(1);
-		if (vdc5fb_lvds_read(priv, LPLLMONR) & LVDS_PLL_LD)
+	while(1) {
+		if ((vdc5fb_lvds_read(priv, LPLLMONR) & LVDS_PLL_LD) != 0)
 			break;
 	}
 
@@ -486,9 +390,105 @@ static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
 	tmp |= LVDS_CLK_EN;
 	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
 
+
 	return 0;
 }
 
+
+//static int vdc5fb_init_lvds(struct vdc5fb_priv *priv)
+//{
+//	struct vdc5fb_pdata *pdata = priv_to_pdata(priv);
+//	struct vdc5fb_lvds_info *lvds = &pdata->lvds;
+//	u32 tmp;
+//	int t;
+//
+//	printk(KERN_EMERG "*** --->>> Enabling LVDS\n");
+//
+//	tmp = vdc5fb_read(priv, SYSCNT_PANEL_CLK);
+//	tmp &= ~PANEL_ICKEN;
+//	vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
+//
+//	/* Output from the LVDS PLL is disabled. */
+//	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
+//	tmp &= ~LVDS_CLK_EN;
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	/* Controls power-down for the LVDS PLL: Power-down state */
+//	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
+//	tmp |= LVDS_PLL_PD;
+//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+//
+//	/* This is a delay (1 usec) while waiting for PLL PD to settle. */
+////	udelay(1);
+//	for (t = 0; t < 103; t++)
+//		;
+//	mdelay(1);
+//
+//	/* LCLKSELR: LVDS clock select register */
+//	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
+//	tmp &= ~LVDS_LCLKSELR_MASK;
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	/* The clock input to frequency divider 1 */
+//	tmp |= LVDS_SET_IN_CLK_SEL(lvds->lvds_in_clk_sel);
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	/* The frequency dividing value (NIDIV) for frequency divider 1 */
+//	tmp |= LVDS_SET_IDIV(lvds->lvds_idiv_set);
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	/* Internal parameter setting for LVDS PLL */
+//	tmp |= LVDS_SET_TST(lvds->lvds_pll_tst);
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	/* The frequency dividing value (NODIV) for frequency divider 2 */
+//	tmp |= LVDS_SET_ODIV(lvds->lvds_odiv_set);
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	/* A channel in VDC5 whose data is to be output through the LVDS */
+//	if (priv->id != 0)
+//		tmp |= LVDS_VDC_SEL;
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	/* LPLLSETR: LVDS PLL setting register */
+//	tmp = vdc5fb_lvds_read(priv, LPLLSETR);
+//	tmp &= ~LVDS_LPLLSETR_MASK;
+//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+//
+//	/* The frequency dividing value (NFD) for the feedback frequency */
+//	tmp |= LVDS_SET_FD(lvds->lvds_pll_fd);
+//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+//
+//	/* The frequency dividing value (NRD) for the input frequency */
+//	tmp |= LVDS_SET_RD(lvds->lvds_pll_rd);
+//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+//
+//	/* The frequency dividing value (NOD) for the output frequency */
+//	tmp |= LVDS_SET_OD(lvds->lvds_pll_od);
+//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+//
+//	/* Controls power-down for the LVDS PLL: Normal operation */
+//	tmp &= ~LVDS_PLL_PD;
+//	vdc5fb_lvds_write(priv, LPLLSETR, tmp);
+//
+//	/* This is a delay (1 usec) while waiting for PLL PD to settle. */
+//	for (t = 0; t < 103; t++)
+//		;
+//	mdelay(1);
+//
+//	for (t = 0; t < 10; t++) {
+//		mdelay(1);
+//		if (vdc5fb_lvds_read(priv, LPLLMONR) & LVDS_PLL_LD)
+//			break;
+//	}
+//
+//	tmp = vdc5fb_lvds_read(priv, LCLKSELR);
+//	tmp |= LVDS_CLK_EN;
+//	vdc5fb_lvds_write(priv, LCLKSELR, tmp);
+//
+//	return 0;
+//}
+//
 /************************************************************************/
 
 static int vdc5fb_init_syscnt(struct vdc5fb_priv *priv)

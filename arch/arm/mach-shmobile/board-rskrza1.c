@@ -293,6 +293,8 @@ void __init rskrza1_init(void)
 	rza1_pfc_pin_assign(P1_9, ALT1, DIR_PIPC);	/* AN1 */
 	rza1_pfc_pin_assign(P1_10, ALT1, DIR_PIPC);	/* AN2 */
 	rza1_pfc_pin_assign(P1_11, ALT1, DIR_PIPC);	/* AN3 */
+	rza1_pfc_pin_assign(P1_12, ALT1, DIR_PIPC);	/* AN3 */
+	rza1_pfc_pin_assign(P1_13, ALT1, DIR_PIPC);	/* AN3 */
 
 	/* input GPIO */
 /*	rza1_pfc_pin_assign(P0_0, PMODE, DIR_IN);	*/

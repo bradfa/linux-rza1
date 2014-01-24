@@ -288,13 +288,16 @@ static int vdc5fb_set_panel_clock(struct vdc5fb_priv *priv,
 	unsigned long desired;
 	unsigned long source;
 	unsigned long used;
+	struct vdc5fb_pdata *pdata = priv_to_pdata(priv); 
 	int n;
 
 	source = clk_get_rate(priv->dot_clk);
 	BUG_ON(source == 0);
 
-	priv->dcdr = 1;
-	return 0;
+	if (pdata->use_lvds) {
+		priv->dcdr = 1;
+		return 0;
+	}
 
 	(void)do_div(desired64, mode->pixclock);
 	desired = (unsigned long)desired64;
@@ -512,13 +515,19 @@ static int vdc5fb_init_syscnt(struct vdc5fb_priv *priv)
 	/* Setup panel clock */
 	tmp = PANEL_DCDR(priv->dcdr);
 
-	tmp |= PANEL_OCKSEL(pdata->panel_ocksel);
+	if (!pdata->use_lvds) {
+		tmp |= PANEL_ICKEN;
+		tmp |= PANEL_OCKSEL(0);
+	} else {
+		tmp |= PANEL_OCKSEL(pdata->panel_ocksel);
+	}
 	tmp |= PANEL_ICKSEL(pdata->panel_icksel);
 	vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
 
-	tmp |= PANEL_ICKEN;
-	vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
-
+	if (pdata->use_lvds) {
+		tmp |= PANEL_ICKEN;
+		vdc5fb_write(priv, SYSCNT_PANEL_CLK, tmp);
+	}
 	return 0;
 }
 
@@ -936,9 +945,9 @@ static void vdc5fb_set_videomode(struct vdc5fb_priv *priv,
 		priv->dcdr);
 
 	priv->res_fh = mode->hsync_len + mode->left_margin + mode->xres
-		+ mode->right_margin - 1;
+		+ mode->right_margin;
 	priv->res_fv = mode->vsync_len + mode->upper_margin + mode->yres
-		+ mode->lower_margin - 1;
+		+ mode->lower_margin;
 	priv->rr = (priv->dc / (priv->res_fh * priv->res_fv));
 
 	tmp =  mode->xres * mode->yres * (pdata->bpp / 8);
@@ -1377,15 +1386,18 @@ static int vdc5fb_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	lvds_res =  platform_get_resource_byname(pdev, IORESOURCE_MEM, "lvds: reg");
-	if (!lvds_res) {
-		dev_err(&pdev->dev, "cannot get resources (lvds reg)\n");
-		goto err1;
-	}
-	priv->lvds_base = ioremap_nocache(lvds_res->start, resource_size(lvds_res));
-	if (!priv->lvds_base) {
-		dev_err(&pdev->dev, "cannot ioremap (lvds reg)\n");
-		goto err1;
+	if (pdata->use_lvds) { 
+		lvds_res =  platform_get_resource_byname(pdev, IORESOURCE_MEM, "lvds: reg");
+		if (!lvds_res) {
+			dev_err(&pdev->dev, "cannot get resources (lvds reg)\n");
+			goto err1;
+		}
+		
+		priv->lvds_base = ioremap_nocache(lvds_res->start, resource_size(lvds_res));
+		if (!priv->lvds_base) {
+			dev_err(&pdev->dev, "cannot ioremap (lvds reg)\n");
+			goto err1;
+		}
 	}
 
 	error = vdc5fb_init_clocks(priv);

@@ -1312,9 +1312,14 @@ static int riic_probe(struct platform_device *pdev)
 		goto clean_up;
 	}
 
-#ifdef CONFIG_ARCH_RZA1
+#ifdef CONFIG_MACH_RSKRZA1
 	/* I2C pfc pin assign after resetting. */
 	rskrza1_board_i2c_pfc_assign(pdev->id);
+#endif
+
+#ifdef CONFIG_MACH_HACHIKO
+	/* I2C pfc pin assign after resetting. */
+	hachiko_board_i2c_pfc_assign(pdev->id);
 #endif
 
 	dev_info(&pdev->dev, "version %s: %d[kbps]\n", DRIVER_VERSION,riic_data->clock);

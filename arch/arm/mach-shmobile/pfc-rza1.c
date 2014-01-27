@@ -17,6 +17,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/mutex.h>
+#include <linux/delay.h>
 #include <mach/rza1.h>
 
 #define GPIO_CHIP_NAME "RZA1_INTERNAL_PFC"
@@ -102,6 +103,9 @@ static int set_direction(unsigned int port, int bit, enum pfc_direction dir)
 	if (dir == DIR_IN) {
 		bit_modify(PM(port), bit, true);
 		bit_modify(PIBC(port), bit, true);
+	} else if (dir == DIR_LVDS) {
+		bit_modify(PM(port), bit, true);
+		bit_modify(PIBC(port), bit, false);
 	} else {
 		bit_modify(PM(port), bit, false);
 		bit_modify(PIBC(port), bit, false);
@@ -272,11 +276,17 @@ int rza1_pfc_pin_assign(enum pfc_pin_number pinnum, enum pfc_mode mode,
 	int port, bit = (int)pinnum;
 
 	port = get_port_bitshift(&bit);
-	if (dir == DIR_PIPC)
-		ip_controlled_driver(port, bit, true);
-	else {
+
+	if (dir == DIR_LVDS) {
 		ip_controlled_driver(port, bit, false);
 		set_direction(port, bit, dir);
+	} else {
+		if (dir == DIR_PIPC)
+			ip_controlled_driver(port, bit, true);
+		else {
+			ip_controlled_driver(port, bit, false);
+			set_direction(port, bit, dir);
+		}
 	}
 
 	return set_mode(port, bit, mode);
@@ -294,7 +304,7 @@ int rza1_pfc_pin_bidirection(enum pfc_pin_number pinnum, bool bidirection)
 	port = get_port_bitshift(&bit);
 	set_bidirection(port, bit, bidirection);
 
-	return 0; 
+	return 0;
 }
 EXPORT_SYMBOL(rza1_pfc_pin_bidirection);
 

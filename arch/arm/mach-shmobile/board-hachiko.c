@@ -48,54 +48,6 @@
 #include <../sound/soc/codecs/wm8978.h>
 #include <video/vdc5fb.h>
 
-/* MTD */
-static struct mtd_partition nor_flash_partitions[] = {
-	{
-		.name		= "loader",
-		.offset		= 0x00000000,
-		.size		= 256 * 1024 * 2,
-	},
-	{
-		.name		= "bootenv",
-		.offset		= MTDPART_OFS_APPEND,
-		.size		= 128 * 1024 * 2,
-		.mask_flags	= MTD_WRITEABLE,
-	},
-	{
-		.name		= "kernel",
-		.offset		= MTDPART_OFS_APPEND,
-		.size		= 4 * 1024 * 1024,
-	},
-	{
-		.name		= "data",
-		.offset		= MTDPART_OFS_APPEND,
-		.size		= MTDPART_SIZ_FULL,
-	},
-};
-
-static struct physmap_flash_data nor_flash_data = {
-	.width		= 2,
-	.parts		= nor_flash_partitions,
-	.nr_parts	= ARRAY_SIZE(nor_flash_partitions),
-};
-
-static struct resource nor_flash_resources[] = {
-	[0]	= {
-		.start	= 0x00000000,
-		.end	= 0x08000000 - 1,
-		.flags	= IORESOURCE_MEM,
-	}
-};
-
-static struct platform_device nor_flash_device = {
-	.name		= "physmap-flash",
-	.dev		= {
-		.platform_data	= &nor_flash_data,
-	},
-	.num_resources	= ARRAY_SIZE(nor_flash_resources),
-	.resource	= nor_flash_resources,
-};
-
 /* MMCIF */
 static struct resource sh_mmcif_resources[] = {
 	[0] = {
@@ -179,7 +131,6 @@ static struct platform_device sdhi0_device = {
 #include "rskrza1-vdc5fb.c"
 
 static struct platform_device *hachiko_devices[] __initdata = {
-	&nor_flash_device,
 	&mmc_device,
 	&sdhi0_device,
 };
@@ -200,6 +151,11 @@ static struct mtd_partition spibsc0_flash_partitions[] = {
 		.name		= "spibsc0_kernel",
 		.offset		= MTDPART_OFS_APPEND,
 		.size		= 0x00400000,
+	},
+	{
+		.name		= "spibsc0_dtb",
+		.offset		= MTDPART_OFS_APPEND,
+		.size		= 0x00040000,
 	},
 	{
 		.name		= "spibsc0_rootfs",

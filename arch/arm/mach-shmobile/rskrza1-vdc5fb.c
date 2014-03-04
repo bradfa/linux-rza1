@@ -39,12 +39,21 @@ static struct resource vdc5fb_resources_ch0[VDC5FB_NUM_RES] = {
 		.end	= (VDC5FB_REG_BASE(0) + VDC5FB_REG_SIZE - 1),
 		.flags	= IORESOURCE_MEM,
 	},
+#if (CONFIG_MEMORY_START == 0x20000000)
+	[1] = {
+		.name	= "vdc5fb.0: fb",
+		.start	= 0,
+		.end	= 0,
+		.flags	= IORESOURCE_MEM,
+	},
+#else
 	[1] = {
 		.name	= "vdc5fb.0: fb",
 		.start	= 0x60200000,
 		.end	= 0x605fffff,
 		.flags	= IORESOURCE_MEM,
 	},
+#endif
 	[2] = {
 		.name	= "vdc5fb.0: irq",
 		.start	= VDC5FB_IRQ_BASE(0),
@@ -61,12 +70,21 @@ static struct resource vdc5fb_resources_ch1[VDC5FB_NUM_RES] = {
 		.end	= (VDC5FB_REG_BASE(1) + VDC5FB_REG_SIZE - 1),
 		.flags	= IORESOURCE_MEM,
 	},
+#if (CONFIG_MEMORY_START == 0x20000000)
+	[1] = {
+		.name	= "vdc5fb.1: fb",
+		.start	= 0,
+		.end	= 0,
+		.flags	= IORESOURCE_MEM,
+	},
+#else
 	[1] = {
 		.name	= "vdc5fb.1: fb",
 		.start	= 0x60600000,
 		.end	= 0x609fffff,
 		.flags	= IORESOURCE_MEM,
 	},
+#endif
 	[2] = {
 		.name	= "vdc5fb.1: irq",
 		.start	= VDC5FB_IRQ_BASE(1),

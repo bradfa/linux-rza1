@@ -36,7 +36,7 @@
 /* KERNEL BOOT OPTIONS */
 int disable_ether;
 static int disable_sdhi;
-static unsigned int vdc5fb0_opts = 1;
+static unsigned int vdc5fb0_opts;
 static unsigned int vdc5fb1_opts;
 
 int __init early_vdc5fb0(char *str)
@@ -49,7 +49,7 @@ early_param("vdc5fb0", early_vdc5fb0);
 int __init early_vdc5fb1(char *str)
 {
 	get_option(&str, &vdc5fb1_opts);
-	if (vdc5fb1_opts != 0) {
+	if (vdc5fb1_opts != 0 && vdc5fb1_opts != 4) {
 		disable_ether = 1;
 		disable_sdhi = 1;
 	}
@@ -62,15 +62,168 @@ early_param("vdc5fb1", early_vdc5fb1);
 /* RESOURCES */
 static struct resource vdc5fb_resources_ch0[VDC5FB_NUM_RES] = {
 	[0] = DEFINE_RES_MEM_NAMED(0xfcff6000, 0x00002000, "vdc5fb.0: reg"),
+#if (CONFIG_MEMORY_START == 0x20000000)
+	[1] = DEFINE_RES_MEM_NAMED(0, 0, "vdc5fb.0: fb"),
+#else
 	[1] = DEFINE_RES_MEM_NAMED(0x60200000, 0x00400000, "vdc5fb.0: fb"),
+#endif
 	[2] = DEFINE_RES_NAMED(75, 23, "vdc5fb.0: irq", IORESOURCE_IRQ),
 };
 static struct resource vdc5fb_resources_ch1[VDC5FB_NUM_RES] = {
 	[0] = DEFINE_RES_MEM_NAMED(0xfcff8000, 0x00002000, "vdc5fb.1: reg"),
+#if (CONFIG_MEMORY_START == 0x20000000)
+	[1] = DEFINE_RES_MEM_NAMED(0, 0, "vdc5fb.1: fb"),
+#else
 	[1] = DEFINE_RES_MEM_NAMED(0x60600000, 0x00300000, "vdc5fb.1: fb"),
+#endif
 /* The last 1MB (0x60900000-0x609fffff) is reserved by librzjpeg (JCU). */
 	[2] = DEFINE_RES_NAMED(99, 23, "vdc5fb.1: irq", IORESOURCE_IRQ),
+	[3] = DEFINE_RES_MEM_NAMED(VDC5FB_REG_LVDS, VDC5FB_REG_LVDS_SIZE, "lvds: reg"),
 };
+
+/*************************************************************************/
+
+/* HACHIKO LVDS */
+
+static struct fb_videomode videomode_lvds = {
+	.name		= "LVDS",
+	.refresh	= 60,
+	.xres		= 800,
+	.yres		= 480,
+	.pixclock	= 31250,
+	.left_margin	= 86,
+	.right_margin	= 42,
+	.upper_margin	= 32,
+	.lower_margin	= 10,
+	.hsync_len	= 128,
+	.vsync_len	= 2,
+	.sync		= 0,
+	.vmode		= 0,
+	.flag		= 0,
+};
+
+static int vdc5fb_pinmux_lvds(struct platform_device *pdev);
+
+static struct vdc5fb_pdata vdc5fb_pdata_lvds = {
+	.name			= "LVDS",
+	.videomode		= &videomode_lvds,
+	.panel_ocksel		= OCKSEL_PLL_DIV7,
+	.panel_icksel		= 0,
+	.bpp			= 32,
+	.panel_width		= 0,
+	.panel_height		= 0,
+	.flm_max		= 1,
+	.out_format		= OUT_FORMAT_RGB888,
+	.use_lvds		= 1,
+	.lvds			= {
+		.lvds_in_clk_sel	= VDC5_LVDS_INCLK_SEL_PERI,
+		.lvds_idiv_set		= VDC5_LVDS_NDIV_4,
+		.lvds_pll_tst		= (uint16_t)8u,
+		.lvds_odiv_set		= VDC5_LVDS_NDIV_4,
+		.lvds_pll_fd		= (uint16_t)56u,
+		.lvds_pll_rd		= (uint16_t)(1u-1u),
+		.lvds_pll_od		= VDC5_LVDS_PLL_NOD_4,
+	},
+	.tcon_sel		= {
+		[LCD_TCON0]	= TCON_SEL_UNUSED,
+		[LCD_TCON1]	= TCON_SEL_UNUSED,
+		[LCD_TCON2]	= TCON_SEL_UNUSED,
+		[LCD_TCON3]	= TCON_SEL_DE,
+		[LCD_TCON4]	= TCON_SEL_UNUSED,
+		[LCD_TCON5]	= TCON_SEL_UNUSED,
+		[LCD_TCON6]	= TCON_SEL_UNUSED,
+	},
+	.pinmux			= vdc5fb_pinmux_lvds,
+};
+
+
+static int vdc5fb_pinmux_lvds(struct platform_device *pdev)
+{
+	rza1_pfc_pin_assign(P5_0, ALT1, DIR_LVDS);
+	rza1_pfc_pin_assign(P5_1, ALT1, DIR_LVDS);
+	rza1_pfc_pin_assign(P5_2, ALT1, DIR_LVDS);
+	rza1_pfc_pin_assign(P5_3, ALT1, DIR_LVDS);
+	rza1_pfc_pin_assign(P5_4, ALT1, DIR_LVDS);
+	rza1_pfc_pin_assign(P5_5, ALT1, DIR_LVDS);
+	rza1_pfc_pin_assign(P5_6, ALT1, DIR_LVDS);
+	rza1_pfc_pin_assign(P5_7, ALT1, DIR_LVDS);
+
+	return 0;
+}
+
+/* HACHIKO LCD */
+
+static struct fb_videomode videomode_wqvga_lcd_kit = {
+	.name		= "WQVGA",
+	.refresh	= 60,
+	.xres		= 480,
+	.yres		= 272,
+	.pixclock	= PIXCLOCK(P1CLK, 7),
+	.left_margin	= 43,
+	.right_margin	= 8,
+	.upper_margin	= 3,
+	.lower_margin	= 3,
+	.hsync_len	= 41,
+	.vsync_len	= 10,
+	.sync		= (FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT),
+	.vmode		= 0,
+	.flag		= 0,
+};
+
+static int vdc5fb_pinmux_lcd_kit(struct platform_device *pdev);
+
+static struct vdc5fb_pdata vdc5fb_pdata_ch0_lcd_kit = {
+	.name			= "LCD",
+	.videomode		= &videomode_wqvga_lcd_kit,
+	.panel_icksel		= ICKSEL_P1CLK,
+	.bpp			= 16,
+	.panel_width		= 184,	/* mm, unused */
+	.panel_height		= 132,	/* mm, unused */
+	.flm_max		= 1,
+	.out_format		= OUT_FORMAT_RGB565,
+	.use_lvds		= 0,
+	.tcon_sel		= {
+		[LCD_TCON0]	= TCON_SEL_DE,		/* DE */
+		[LCD_TCON1]	= TCON_SEL_UNUSED,	/* NC */
+		[LCD_TCON2]	= TCON_SEL_UNUSED,	/* NC */
+		[LCD_TCON3]	= TCON_SEL_UNUSED,	/* NC */
+		[LCD_TCON4]	= TCON_SEL_UNUSED,	/* NC */
+		[LCD_TCON5]	= TCON_SEL_UNUSED,	/* NC */
+		[LCD_TCON6]	= TCON_SEL_UNUSED,	/* NC */
+	},
+	.pinmux			= vdc5fb_pinmux_lcd_kit,
+};
+
+static int vdc5fb_pinmux_lcd_kit(struct platform_device *pdev)
+{
+	struct vdc5fb_pdata *pdata = (struct vdc5fb_pdata *)pdev->dev.platform_data;
+
+	if (pdev->id == 0) {
+		rza1_pfc_pin_assign(P3_8, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P3_9, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P3_10, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P3_11, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P3_12, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P3_13, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P3_14, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P3_15, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_0, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_1, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_2, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_3, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_4, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_5, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_6, ALT1, DIIO_PBDC_DIS);
+		rza1_pfc_pin_assign(P4_7, ALT1, DIIO_PBDC_DIS);
+
+		rza1_pfc_pin_assign(P3_0, ALT1, DIIO_PBDC_DIS);
+
+		if (pdata->tcon_sel[LCD_TCON0] != TCON_SEL_UNUSED)
+			rza1_pfc_pin_assign(P3_1, ALT1, DIIO_PBDC_DIS);
+	}
+
+	return 0;
+}
 
 /*************************************************************************/
 
@@ -303,16 +456,20 @@ static struct ili210x_platform_data i2c0_ili210x_pdata = {
 	.irq_flags		= IRQF_TRIGGER_LOW,	/* unused */
 	.poll_period		= 20,
 	.get_pendown_state	= NULL,
+#ifdef CONFIG_LCD_KIT_B01 
 	.polling		= true,
 	.r8c_addr		= 0x42,
+#endif
 };
 
 static struct ili210x_platform_data i2c3_ili210x_pdata = {
 	.irq_flags		= IRQF_TRIGGER_HIGH,
 	.poll_period		= 20,
 	.get_pendown_state	= NULL,
+#ifdef CONFIG_LCD_KIT_B01 
 	.polling		= true,
 	.r8c_addr		= 0x42,
+#endif
 };
 
 static struct i2c_board_info i2c0_ili210x_devices[] = {
@@ -388,7 +545,9 @@ static int vdc5fb_setup(void)
 			pdev->dev.platform_data =
 				&vdc5fb_pdata_ch0_vga;
 			break;
-		case 3:	/* Add channel 1 first */
+		case 3:
+			pdev->dev.platform_data =
+				&vdc5fb_pdata_ch0_lcd_kit;
 			break;
 		default:
 			break;
@@ -413,6 +572,10 @@ static int vdc5fb_setup(void)
 		case 3:	/* LCD monitor */
 			pdev->dev.platform_data =
 				&vdc5fb_pdata_ch1_vga;
+			break;
+		case 4:
+			pdev->dev.platform_data =
+				&vdc5fb_pdata_lvds;
 			break;
 		default:
 			break;

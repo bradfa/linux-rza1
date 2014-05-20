@@ -134,6 +134,13 @@ config MACH_RSKRZA1
 	select USE_OF
 	select LCD_KIT_B01
 
+config MACH_HACHIKO
+	bool "HACHIKO board"
+	depends on ARCH_RZA1
+	select ARCH_REQUIRE_GPIOLIB
+	select REGULATOR_FIXED_VOLTAGE if REGULATOR
+	select USE_OF
+
 comment "SH-Mobile System Configuration"
 
 config CPU_HAS_INTEVT

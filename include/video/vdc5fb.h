@@ -27,14 +27,17 @@
 #define	VDC5FB_NUM_CH		2
 
 /* NUMBER OF RESOURCES */
-#define	VDC5FB_NUM_RES		3
+#define	VDC5FB_NUM_RES		4
 /* MEM resource 0 is used for registers */
 /* MEM resource 1 is used for framebuffer(s) */
 /* IRQ resource 0 is used for irq numbers */
+/* MEM resource 2 is used for LVDS */
 
 /* BASE ADDRESS AND SIZE OF REGISTERS */
 #define	VDC5FB_REG_BASE(x)	(0xFCFF6000 + (0x2000 * (x)))
 #define	VDC5FB_REG_SIZE		0x2000
+#define VDC5FB_REG_LVDS		0xFCFF7A30
+#define VDC5FB_REG_LVDS_SIZE	0x2D
 
 /* START AND TOTAL NUMBER OF IRQS */
 #define	VDC5FB_IRQ_BASE(x)	(75 + (24 * (x)))
@@ -46,6 +49,12 @@ enum {
 	ICKSEL_EXTCLK0,
 	ICKSEL_EXTCLK1,
 	ICKSEL_P1CLK,
+};
+
+enum {
+	OCKSEL_ICK = 0,
+	OCKSEL_PLL,
+	OCKSEL_PLL_DIV7,
 };
 
 /* tcon_sel */
@@ -70,9 +79,48 @@ enum {				/* index */
 #define	TCON_SEL_UNUSED		0xff
 
 /* out_format */
-#define	OUT_FORMAT_RGB888	0
-#define	OUT_FORMAT_RGB666	1
-#define	OUT_FORMAT_RGB565	2
+enum {
+	OUT_FORMAT_RGB888 = 0,
+	OUT_FORMAT_RGB666,
+	OUT_FORMAT_RGB565,
+};
+
+/*! The clock input to frequency divider 1 */
+enum {
+	VDC5_LVDS_INCLK_SEL_IMG = 0,	/*!< Video image clock (VIDEO_X1) */
+	VDC5_LVDS_INCLK_SEL_DV_0,	/*!< Video image clock (DV_CLK 0) */
+	VDC5_LVDS_INCLK_SEL_DV_1,	/*!< Video image clock (DV_CLK 1) */
+	VDC5_LVDS_INCLK_SEL_EXT_0,	/*!< External clock (LCD_EXTCLK 0) */
+	VDC5_LVDS_INCLK_SEL_EXT_1,	/*!< External clock (LCD_EXTCLK 1) */
+	VDC5_LVDS_INCLK_SEL_PERI,	/*!< Peripheral clock 1 */
+	VDC5_LVDS_INCLK_SEL_NUM
+};
+
+enum {
+	VDC5_LVDS_NDIV_1 = 0,		/*!< Div 1 */
+	VDC5_LVDS_NDIV_2,		/*!< Div 2 */
+	VDC5_LVDS_NDIV_4,		/*!< Div 4 */
+	VDC5_LVDS_NDIV_NUM
+};
+
+/*! The frequency dividing value (NOD) for the output frequency */
+enum {
+	VDC5_LVDS_PLL_NOD_1 = 0,	/*!< Div 1 */
+	VDC5_LVDS_PLL_NOD_2,		/*!< Div 2 */
+	VDC5_LVDS_PLL_NOD_4,		/*!< Div 4 */
+	VDC5_LVDS_PLL_NOD_8,		/*!< Div 8 */
+	VDC5_LVDS_PLL_NOD_NUM
+};
+
+struct vdc5fb_lvds_info {
+	int lvds_in_clk_sel;		/*!< The clock input to frequency divider 1 */
+	int lvds_idiv_set;		/*!< The frequency dividing value (NIDIV) for frequency divider 1 */
+	int lvds_pll_tst;		/*!< Internal parameter setting for LVDS PLL */
+	int lvds_odiv_set;		/*!< The frequency dividing value (NODIV) for frequency divider 2 */
+	int lvds_pll_fd;		/*!< The frequency dividing value (NFD) for the feedback frequency */
+	int lvds_pll_rd;		/*!< The frequency dividing value (NRD) for the input frequency */
+	int lvds_pll_od;		/*!< The frequency dividing value (NOD) for the output frequency */
+};
 
 /* board-specific data */
 struct vdc5fb_pdata {
@@ -80,6 +128,7 @@ struct vdc5fb_pdata {
 	struct fb_videomode *videomode;
 	int bpp;		/* should be 16 or 32 */
 	int panel_icksel;	/* should be ICKSEL_P1CLK */
+	int panel_ocksel;
 	unsigned long panel_width;
 	unsigned long panel_height;
 	unsigned long flm_max;
@@ -90,6 +139,7 @@ struct vdc5fb_pdata {
 #define	FLAGS_RETIMING	0x02	/* enable resize */
 #define	FLAGS_DS	0x04	/* enable down-scale */
 	unsigned char tcon_sel[LCD_MAX_TCON];
+	struct vdc5fb_lvds_info lvds;
 /* board specific setting function */
 	int (*pinmux)(struct platform_device *pdev);
 };

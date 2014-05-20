@@ -55,6 +55,7 @@ enum pfc_direction {
 	PORT_OUT_LOW,		/* Port Mode & Output direction & Low Level Output Pn = 0 */
 	DIR_OUT,
 	DIR_IN,			/* Port Mode or Software I/O Mode is Direction IN */
+	DIR_LVDS,
 };
 
 extern int disable_ether;
@@ -68,6 +69,15 @@ extern void rza1_map_io(void);
 extern int rza1_pinmux_setup(void);
 extern int rza1_pfc_pin_assign(enum pfc_pin_number pinnum, enum pfc_mode mode,
 			       enum pfc_direction dir);
+extern void rza1_pfc_pin_lvds(void);
+#ifdef CONFIG_MACH_RSKRZA1
 int rskrza1_board_i2c_pfc_assign(int id);
+int rskrza1_board_can_pfc_assign(int channel);
+#endif
+
+#ifdef CONFIG_MACH_HACHIKO
+int hachiko_board_i2c_pfc_assign(int id);
+int hachiko_board_can_pfc_assign(int channel);
+#endif
 
 #endif /* __ASM_RZA1_H__ */

@@ -37,6 +37,7 @@
 #include <linux/usb/r8a66597.h>
 #include <linux/spi/sh_spibsc.h>
 #include <linux/platform_data/dma-rza1.h>
+#include <linux/can/platform/rza1_can.h>
 #include <linux/uio_driver.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
@@ -493,6 +494,7 @@ static struct platform_device i2c_device1 = {
 	.resource	= i2c_resources1,
 };
 
+#if !defined(CONFIG_MACH_HACHIKO)
 static struct resource i2c_resources2[] = {
 	[0] = {
 		.start	= 0xfcfee800,
@@ -528,6 +530,7 @@ static struct platform_device i2c_device2 = {
 	.num_resources	= ARRAY_SIZE(i2c_resources2),
 	.resource	= i2c_resources2,
 };
+#endif
 
 static struct resource i2c_resources3[] = {
 	[0] = {
@@ -716,6 +719,49 @@ static struct resource spi4_resources[] = {
 		.start	= 282,
 		.end	= 284,
 		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct resource rz_can_resources[] = {
+	[0] = {
+		.start	= 0xe803a000,
+		.end	= 0xe803b813,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= 258,
+		.end	= 258,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start	= 260,
+		.end	= 260,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[3] = {
+		.start	= 259,
+		.end	= 259,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[4] = {
+		.start	= 253,
+		.end	= 253,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct rz_can_platform_data rz_can_data = {
+	.channel	= 1,
+	.clock_select	= CLKR_CLKC,
+};
+
+static struct platform_device rz_can_device = {
+	.name		= "rz_can",
+	.num_resources	= ARRAY_SIZE(rz_can_resources),
+	.resource	= rz_can_resources,
+	.dev	= {
+		.platform_data	= &rz_can_data,
+
 	},
 };
 
@@ -1081,7 +1127,9 @@ static struct platform_device scux_device = {
 static struct platform_device *rza1_devices[] __initdata = {
 	&i2c_device0,
 	&i2c_device1,
+#if !defined(CONFIG_MACH_HACHIKO)
 	&i2c_device2,
+#endif
 	&i2c_device3,
 	&r8a66597_usb_host0_device,
 	&sh_eth_device,
@@ -1093,6 +1141,7 @@ static struct platform_device *rza1_devices[] __initdata = {
 	&adc0_device,
 	&spibsc0_device,
 	&spibsc1_device,
+	&rz_can_device,
 	&pwm0_device,
 	&pwm_backlight_device,
 	&jcu_device,

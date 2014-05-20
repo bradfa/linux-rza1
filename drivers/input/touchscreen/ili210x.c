@@ -17,6 +17,15 @@
 #define REG_FIRMWARE_VERSION	0x40
 #define REG_CALIBRATE		0xcc
 
+#ifdef CONFIG_LCD_KIT_B01
+/* Additional commands for LCD-KIT-B01 */
+#define REG_IRQSTAT		0x01
+#define IRQSTAT_TP_INT		0x01
+#define IRQSTAT_SW1INT		0x04
+#define IRQSTAT_SW2INT		0x08
+#define IRQSTAT_SW3INT		0x10
+#endif
+
 struct finger {
 	u8 x_low;
 	u8 x_high;
@@ -47,6 +56,13 @@ struct ili210x {
 	bool (*get_pendown_state)(void);
 	unsigned int poll_period;
 	struct delayed_work dwork;
+#ifdef CONFIG_LCD_KIT_B01
+	bool polling;
+	u16 r8c_addr;
+	u8 left;	/* sw1 */
+	u8 middle;	/* sw2 */
+	u8 right;	/* sw3 */
+#endif
 };
 
 static int ili210x_read_reg(struct i2c_client *client, u8 reg, void *buf,
@@ -113,6 +129,63 @@ static bool get_pendown_state(const struct ili210x *priv)
 	return state;
 }
 
+#ifdef CONFIG_LCD_KIT_B01
+static void ili210x_work(struct work_struct *work)
+{
+	struct ili210x *priv = container_of(work, struct ili210x, dwork.work);
+	struct i2c_client *client = priv->client;
+	struct touchdata touchdata;
+	u16 addr;
+	u8 irqstat;
+	int error;
+
+	addr = client->addr;
+	client->addr = priv->r8c_addr;
+	error = ili210x_read_reg(client, REG_IRQSTAT, &irqstat,
+		sizeof(irqstat));
+	client->addr = addr;
+	if (error) {
+		dev_err(&client->dev,
+			"Unable to get irqstat, err = %d\n", error);
+		if (!priv->polling)
+			enable_irq(priv->client->irq);
+		return;
+	}
+
+	if (priv->left != (irqstat & IRQSTAT_SW1INT)) {
+		priv->left = (irqstat & IRQSTAT_SW1INT);
+		input_report_key(priv->input, BTN_LEFT, priv->left);
+	}
+	if (priv->middle != (irqstat & IRQSTAT_SW2INT)) {
+		priv->middle = (irqstat & IRQSTAT_SW2INT);
+		input_report_key(priv->input, BTN_MIDDLE, priv->middle);
+	}
+	if (priv->right != (irqstat & IRQSTAT_SW3INT)) {
+		priv->right = (irqstat & IRQSTAT_SW3INT);
+		input_report_key(priv->input, BTN_RIGHT, priv->right);
+	}
+	if (irqstat & IRQSTAT_TP_INT) {
+		error = ili210x_read_reg(client, REG_TOUCHDATA,
+			&touchdata, sizeof(touchdata));
+		if (error)
+			dev_err(&client->dev,
+				"Unable to get touchdata, err = %d\n", error);
+		else
+			ili210x_report_events(priv->input, &touchdata);
+	}
+
+	if (priv->polling)
+		schedule_delayed_work(&priv->dwork,
+			msecs_to_jiffies(priv->poll_period));
+	else {
+		if ((touchdata.status & 0xf3) || get_pendown_state(priv))
+			schedule_delayed_work(&priv->dwork,
+				msecs_to_jiffies(priv->poll_period));
+		enable_irq(priv->client->irq);
+	}
+}
+
+#else
 static void ili210x_work(struct work_struct *work)
 {
 	struct ili210x *priv = container_of(work, struct ili210x,
@@ -135,6 +208,7 @@ static void ili210x_work(struct work_struct *work)
 		schedule_delayed_work(&priv->dwork,
 				      msecs_to_jiffies(priv->poll_period));
 }
+#endif
 
 static irqreturn_t ili210x_irq(int irq, void *irq_data)
 {
@@ -235,6 +309,10 @@ static int ili210x_i2c_probe(struct i2c_client *client,
 	priv->input = input;
 	priv->get_pendown_state = pdata->get_pendown_state;
 	priv->poll_period = pdata->poll_period ? : DEFAULT_POLL_PERIOD;
+#ifdef CONFIG_LCD_KIT_B01
+	priv->r8c_addr = pdata->r8c_addr;
+	priv->polling = pdata->polling;
+#endif
 	INIT_DELAYED_WORK(&priv->dwork, ili210x_work);
 
 	/* Setup input device */
@@ -259,6 +337,18 @@ static int ili210x_i2c_probe(struct i2c_client *client,
 	input_set_drvdata(input, priv);
 	i2c_set_clientdata(client, priv);
 
+#ifdef CONFIG_LCD_KIT_B01
+	if (!priv->polling) {
+		error = request_irq(client->irq, ili210x_irq,
+			pdata->irq_flags, client->name, priv);
+		if (error) {
+			dev_err(dev,
+				"Unable to request touchscreen IRQ, err: %d\n",
+				error);
+			goto err_free_mem;
+		}
+	}
+#else
 	error = request_irq(client->irq, ili210x_irq, pdata->irq_flags,
 			    client->name, priv);
 	if (error) {
@@ -266,6 +356,7 @@ static int ili210x_i2c_probe(struct i2c_client *client,
 			error);
 		goto err_free_mem;
 	}
+#endif
 
 	error = sysfs_create_group(&dev->kobj, &ili210x_attr_group);
 	if (error) {
@@ -282,6 +373,13 @@ static int ili210x_i2c_probe(struct i2c_client *client,
 
 	device_init_wakeup(&client->dev, 1);
 
+#ifdef CONFIG_LCD_KIT_B01
+	if (priv->polling) {
+		schedule_delayed_work(&priv->dwork,
+			msecs_to_jiffies(priv->poll_period));
+	}
+#endif
+
 	dev_dbg(dev,
 		"ILI210x initialized (IRQ: %d), firmware version %d.%d.%d",
 		client->irq, firmware.id, firmware.major, firmware.minor);
@@ -291,7 +389,12 @@ static int ili210x_i2c_probe(struct i2c_client *client,
 err_remove_sysfs:
 	sysfs_remove_group(&dev->kobj, &ili210x_attr_group);
 err_free_irq:
+#ifdef CONFIG_LCD_KIT_B01
+	if (!priv->polling)
+		free_irq(client->irq, priv);
+#else
 	free_irq(client->irq, priv);
+#endif
 err_free_mem:
 	input_free_device(input);
 	kfree(priv);
@@ -303,7 +406,12 @@ static int ili210x_i2c_remove(struct i2c_client *client)
 	struct ili210x *priv = i2c_get_clientdata(client);
 
 	sysfs_remove_group(&client->dev.kobj, &ili210x_attr_group);
+#ifdef CONFIG_LCD_KIT_B01
+	if (!priv->polling)
+		free_irq(client->irq, priv);
+#else
 	free_irq(priv->client->irq, priv);
+#endif
 	cancel_delayed_work_sync(&priv->dwork);
 	input_unregister_device(priv->input);
 	kfree(priv);
@@ -337,7 +445,12 @@ static SIMPLE_DEV_PM_OPS(ili210x_i2c_pm,
 			 ili210x_i2c_suspend, ili210x_i2c_resume);
 
 static const struct i2c_device_id ili210x_i2c_id[] = {
+#ifdef CONFIG_MACH_RSKRZA1
 	{ "ili210x", 0 },
+	{ "ili210x", 3 },
+#else
+	{ "ili210x", 0 },
+#endif
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, ili210x_i2c_id);

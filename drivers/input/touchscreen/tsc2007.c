@@ -201,8 +201,8 @@ static irqreturn_t tsc2007_soft_irq(int irq, void *handle)
 
 		} else {
 			/*
-			 * Sample found inconsistent by debouncing or pressure is
-			 * beyond the maximum. Don't report it to user space,
+			 * Sample found inconsistent by debouncing or pressure
+			 * is beyond the maximum. Don't report it to user space,
 			 * repeat at least once more the measurement.
 			 */
 			dev_dbg(&ts->client->dev, "ignored pressure %d\n", rt);
@@ -383,7 +383,11 @@ static int tsc2007_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id tsc2007_idtable[] = {
+#ifdef CONFIG_MACH_RSKRZA1
+	{ "tsc2007", 3 },	/* R0P7724LE0011RL */
+#else
 	{ "tsc2007", 0 },
+#endif
 	{ }
 };
 

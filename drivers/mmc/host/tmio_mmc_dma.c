@@ -1,6 +1,7 @@
 /*
  * linux/drivers/mmc/tmio_mmc_dma.c
  *
+ * Copyright (C) 2013-2014 Renesas Solutions Corp.
  * Copyright (C) 2010-2011 Guennadi Liakhovetski
  *
  * This program is free software; you can redistribute it and/or modify
@@ -74,6 +75,9 @@ static void tmio_mmc_start_dma_rx(struct tmio_mmc_host *host)
 
 	if (sg->length < TMIO_MMC_MIN_DMA_LEN) {
 		host->force_pio = true;
+#if defined(CONFIG_ARCH_RZA1)
+		tmio_mmc_enable_dma(host, false);
+#endif
 		return;
 	}
 
@@ -106,6 +110,9 @@ pio:
 		/* DMA failed, fall back to PIO */
 		if (ret >= 0)
 			ret = -EIO;
+#if defined(CONFIG_ARCH_RZA1)
+		tmio_mmc_enable_dma(host, false);
+#endif
 		host->chan_rx = NULL;
 		dma_release_channel(chan);
 		/* Free the Tx channel too */
@@ -116,11 +123,10 @@ pio:
 		}
 		dev_warn(&host->pdev->dev,
 			 "DMA failed: %d, falling back to PIO\n", ret);
-		tmio_mmc_enable_dma(host, false);
 	}
 
-	dev_dbg(&host->pdev->dev, "%s(): desc %p, cookie %d, sg[%d]\n", __func__,
-		desc, cookie, host->sg_len);
+	dev_dbg(&host->pdev->dev, "%s(): desc %p, cookie %d, sg[%d]\n",
+		__func__, desc, cookie, host->sg_len);
 }
 
 static void tmio_mmc_start_dma_tx(struct tmio_mmc_host *host)
@@ -151,6 +157,9 @@ static void tmio_mmc_start_dma_tx(struct tmio_mmc_host *host)
 
 	if (sg->length < TMIO_MMC_MIN_DMA_LEN) {
 		host->force_pio = true;
+#if defined(CONFIG_ARCH_RZA1)
+		tmio_mmc_enable_dma(host, false);
+#endif
 		return;
 	}
 
@@ -187,6 +196,9 @@ pio:
 		/* DMA failed, fall back to PIO */
 		if (ret >= 0)
 			ret = -EIO;
+#if defined(CONFIG_ARCH_RZA1)
+		tmio_mmc_enable_dma(host, false);
+#endif
 		host->chan_tx = NULL;
 		dma_release_channel(chan);
 		/* Free the Rx channel too */
@@ -197,7 +209,6 @@ pio:
 		}
 		dev_warn(&host->pdev->dev,
 			 "DMA failed: %d, falling back to PIO\n", ret);
-		tmio_mmc_enable_dma(host, false);
 	}
 
 	dev_dbg(&host->pdev->dev, "%s(): desc %p, cookie %d\n", __func__,
@@ -269,7 +280,8 @@ static bool tmio_mmc_filter(struct dma_chan *chan, void *arg)
 	return true;
 }
 
-void tmio_mmc_request_dma(struct tmio_mmc_host *host, struct tmio_mmc_data *pdata)
+void tmio_mmc_request_dma(struct tmio_mmc_host *host,
+	struct tmio_mmc_data *pdata)
 {
 	/* We can only either use DMA for both Tx and Rx or not use it at all */
 	if (!pdata->dma)
@@ -301,8 +313,10 @@ void tmio_mmc_request_dma(struct tmio_mmc_host *host, struct tmio_mmc_data *pdat
 		if (!host->bounce_buf)
 			goto ebouncebuf;
 
-		tasklet_init(&host->dma_complete, tmio_mmc_tasklet_fn, (unsigned long)host);
-		tasklet_init(&host->dma_issue, tmio_mmc_issue_tasklet_fn, (unsigned long)host);
+		tasklet_init(&host->dma_complete, tmio_mmc_tasklet_fn,
+			(unsigned long)host);
+		tasklet_init(&host->dma_issue, tmio_mmc_issue_tasklet_fn,
+			(unsigned long)host);
 	}
 
 	tmio_mmc_enable_dma(host, true);

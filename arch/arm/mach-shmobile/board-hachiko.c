@@ -192,16 +192,6 @@ static struct flash_platform_data spi_flash_data1 = {
 
 
 static struct spi_board_info hachiko_spi_devices[] __initdata = {
-#if (defined(CONFIG_SPI_MASTER) && defined(CONFIG_MACH_HACHIKO))
-	{
-		.modalias = "wm8978",
-		.max_speed_hz = 3125000,
-		/* max spi clock (SCK) speed in HZ */
-		.bus_num = 4,
-		.chip_select = 0,
-		.mode = SPI_MODE_3,
-	},
-#endif
 	{
 		/* spidev */
 		.modalias		= "spidev",

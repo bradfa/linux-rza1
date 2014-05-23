@@ -152,7 +152,7 @@ static struct mtd_partition spibsc0_flash_partitions[] = {
 	{
 		.name		= "spibsc0_kernel",
 		.offset		= MTDPART_OFS_APPEND,
-		.size		= 0x00400000,
+		.size		= 0x00800000,
 	},
 	{
 		.name		= "spibsc0_dtb",

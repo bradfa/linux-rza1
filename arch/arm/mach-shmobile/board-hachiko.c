@@ -39,6 +39,7 @@
 #include <linux/mmc/sh_mobile_sdhi.h>
 #include <linux/mfd/tmio.h>
 #include <linux/platform_data/dma-rza1.h>
+#include <linux/platform_data/silica-ts.h>
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <mach/common.h>
@@ -85,6 +86,39 @@ static struct platform_device mmc_device = {
 	},
 	.num_resources	= ARRAY_SIZE(sh_mmcif_resources),
 	.resource	= sh_mmcif_resources,
+};
+
+/* Touchscreen */
+static struct silica_tsc_pdata tsc_info = {
+	.x_min		= 87,
+	.x_max		= 918,
+	.y_min		= 197,
+	.y_max		= 814,
+	.ain_x		= 3,
+	.ain_y		= 1,
+};
+
+static struct resource tsc_resources[] = {
+	[0] = {
+		.start  = 0xe8005800,
+		.end    = 0xe80058ff,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= 545,
+		.end	= 545,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device tsc_device = {
+	.name		= "silica_tsc",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(tsc_resources),
+	.resource	= tsc_resources,
+	.dev		= {
+		.platform_data		= &tsc_info,
+	},
 };
 
 /* SDHI0 */
@@ -135,6 +169,7 @@ static struct platform_device sdhi0_device = {
 static struct platform_device *hachiko_devices[] __initdata = {
 	&mmc_device,
 	&sdhi0_device,
+	&tsc_device,
 };
 
 static struct mtd_partition spibsc0_flash_partitions[] = {

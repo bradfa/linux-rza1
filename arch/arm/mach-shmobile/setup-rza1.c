@@ -1138,7 +1138,7 @@ static struct platform_device *rza1_devices[] __initdata = {
 	&spi2_device,
 	&spi3_device,
 	&spi4_device,
-	&adc0_device,
+//	&adc0_device,
 	&spibsc0_device,
 	&spibsc1_device,
 	&rz_can_device,

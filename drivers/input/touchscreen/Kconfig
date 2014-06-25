@@ -11,6 +11,12 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
+config TOUCHSCREEN_SILICA
+	tristate "Silica TCS"
+	help
+	  Say Y here if you have a SILICA touchscreen and want to enable
+	  support for it.
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X

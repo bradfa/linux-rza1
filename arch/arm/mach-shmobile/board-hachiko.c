@@ -87,6 +87,27 @@ static struct platform_device mmc_device = {
 	.resource	= sh_mmcif_resources,
 };
 
+/* Touchscreen */
+static struct resource tsc_resources[] = {
+	[0] = {
+		.start  = 0xe8005800,
+		.end    = 0xe80058ff,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= 545,
+		.end	= 545,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device tsc_device = {
+	.name		= "silica_tsc",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(tsc_resources),
+	.resource	= tsc_resources,
+};
+
 /* SDHI0 */
 static struct sh_mobile_sdhi_info sdhi0_info = {
 	.dma_slave_tx	= RZA1DMA_SLAVE_SDHI0_TX,
@@ -135,6 +156,7 @@ static struct platform_device sdhi0_device = {
 static struct platform_device *hachiko_devices[] __initdata = {
 	&mmc_device,
 	&sdhi0_device,
+	&tsc_device,
 };
 
 static struct mtd_partition spibsc0_flash_partitions[] = {

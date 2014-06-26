@@ -1,7 +1,13 @@
-#ifndef __LINUX_PLATFORM_DATA_SILICA_TS_H__
-#define __LINUX_PLATFORM_DATA_SILICA_TS_H__
+#ifndef __LINUX_PLATFORM_DATA_SILICA_TSC_H__
+#define __LINUX_PLATFORM_DATA_SILICA_TSC_H__
 
-struct silica_ts_pdata {
+struct silica_tsc_pdata {
+	int x_min;
+	int x_max;
+	int y_min;
+	int y_max;
+	unsigned char ain_x;
+	unsigned char ain_y;
 };
 
-#endif /* __LINUX_PLATFORM_DATA_SILICA_TS_H__ */
+#endif /* __LINUX_PLATFORM_DATA_SILICA_TSC_H__ */

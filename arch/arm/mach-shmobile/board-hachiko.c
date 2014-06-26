@@ -39,6 +39,7 @@
 #include <linux/mmc/sh_mobile_sdhi.h>
 #include <linux/mfd/tmio.h>
 #include <linux/platform_data/dma-rza1.h>
+#include <linux/platform_data/silica-ts.h>
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <mach/common.h>
@@ -88,6 +89,15 @@ static struct platform_device mmc_device = {
 };
 
 /* Touchscreen */
+static struct silica_tsc_pdata tsc_info = {
+	.x_min		= 87,
+	.x_max		= 918,
+	.y_min		= 197,
+	.y_max		= 814,
+	.ain_x		= 3,
+	.ain_y		= 1,
+};
+
 static struct resource tsc_resources[] = {
 	[0] = {
 		.start  = 0xe8005800,
@@ -106,6 +116,9 @@ static struct platform_device tsc_device = {
 	.id		= 0,
 	.num_resources	= ARRAY_SIZE(tsc_resources),
 	.resource	= tsc_resources,
+	.dev		= {
+		.platform_data		= &tsc_info,
+	},
 };
 
 /* SDHI0 */

@@ -16,9 +16,6 @@
 #include <linux/kthread.h>
 #include <mach/rza1.h>
 
-#define ADC_RESOLUTION			10
-#define ADC_SINGLE_SAMPLE_MASK		((1 << ADC_RESOLUTION) - 1)
-
 #define SH_ADC_ADDRA	0x00
 #define SH_ADC_ADDRB	0x02
 #define SH_ADC_ADDRC	0x04
@@ -29,7 +26,7 @@
 #define SH_ADC_ADDRH	0x0e
 #define SH_ADC_ADCSR	0x60
 
-#define SH_ADC_ADDR_MASK	0xffc0
+#define SH_ADC_ADDR_MASK	0x03FF
 #define SH_ADC_ADDR_SHIFT	6
 
 #define SH_ADC_ADCSR_ADF	0x8000
@@ -68,17 +65,12 @@
 #define SH_ADC_ADCSR_CH_AN7	0x0007
 
 #define SH_ADC_NUM_CHANNEL	8
-#define silica_ts_get_reg_addr(ch)	(SH_ADC_ADDRA + ch * 2)
+#define silica_tsc_get_reg_addr(ch)	(SH_ADC_ADDRA + ch * 2)
    
-enum {
-	X = 0,
-	Y,
-	NUM_AXIS
-};
-
-struct silica_ts {
+struct silica_tsc {
 	struct input_dev *idev;
 	struct clk *clk;
+	struct silica_tsc_pdata *pdata;
 	spinlock_t irq_lock;
 	wait_queue_head_t irq_wait;
 	unsigned irq_disabled;
@@ -87,57 +79,56 @@ struct silica_ts {
 	int irq;
 };
 
-static void silica_ts_write(struct silica_ts *adc, unsigned short data,
-			 unsigned long offset)
-{
-	iowrite16(data, adc->reg + offset);
-}
-
-static unsigned short silica_ts_read(struct silica_ts *adc, unsigned long offset)
-{
-	return ioread16(adc->reg + offset);
-}
-
-static void silica_ts_set_bit(struct silica_ts *adc, unsigned short val,
-			   unsigned long offset)
-{
-	unsigned short tmp;
-
-	tmp = silica_ts_read(adc, offset);
-	tmp |= val;
-	silica_ts_write(adc, tmp, offset);
-}
-
-static void silica_ts_clear_bit(struct silica_ts *adc, unsigned short val,
+static void silica_tsc_write(struct silica_tsc *tsc, unsigned short data,
 			     unsigned long offset)
 {
-	unsigned short tmp;
-
-	tmp = silica_ts_read(adc, offset);
-	tmp &= ~val;
-	silica_ts_write(adc, tmp, offset);
+	iowrite16(data, tsc->reg + offset);
 }
 
-static int sh_adc_start_adc(struct silica_ts *adc, int channel)
+static unsigned short silica_tsc_read(struct silica_tsc *tsc, unsigned long offset)
 {
-	silica_ts_clear_bit(adc, SH_ADC_ADCSR_ADST, SH_ADC_ADCSR);
-	silica_ts_clear_bit(adc, SH_ADC_ADCSR_TRGS_MASK, SH_ADC_ADCSR);
+	return ioread16(tsc->reg + offset);
+}
 
-	silica_ts_clear_bit(adc, SH_ADC_ADCSR_MDS_MASK, SH_ADC_ADCSR);
-	silica_ts_clear_bit(adc, SH_ADC_ADCSR_CH_MASK, SH_ADC_ADCSR);
-	silica_ts_set_bit(adc, channel, SH_ADC_ADCSR);
+static void silica_tsc_set_bit(struct silica_tsc *tsc, unsigned short val,
+			       unsigned long offset)
+{
+	unsigned short tmp;
 
-	mdelay(1); ////////
+	tmp = silica_tsc_read(tsc, offset);
+	tmp |= val;
+	silica_tsc_write(tsc, tmp, offset);
+}
 
-	silica_ts_set_bit(adc, SH_ADC_ADCSR_ADST,
-		       SH_ADC_ADCSR);
+static void silica_tsc_clear_bit(struct silica_tsc *tsc, unsigned short val,
+				 unsigned long offset)
+{
+	unsigned short tmp;
+
+	tmp = silica_tsc_read(tsc, offset);
+	tmp &= ~val;
+	silica_tsc_write(tsc, tmp, offset);
+}
+
+static int silica_tsc_start_adc(struct silica_tsc *tsc, int channel)
+{
+	silica_tsc_clear_bit(tsc, SH_ADC_ADCSR_ADST, SH_ADC_ADCSR);
+	silica_tsc_clear_bit(tsc, SH_ADC_ADCSR_TRGS_MASK, SH_ADC_ADCSR);
+
+	silica_tsc_clear_bit(tsc, SH_ADC_ADCSR_MDS_MASK, SH_ADC_ADCSR);
+	silica_tsc_clear_bit(tsc, SH_ADC_ADCSR_CH_MASK, SH_ADC_ADCSR);
+	silica_tsc_set_bit(tsc, channel, SH_ADC_ADCSR);
+
+	mdelay(1);
+
+	silica_tsc_set_bit(tsc, SH_ADC_ADCSR_ADST, SH_ADC_ADCSR);
 
 	return 0;
 }
 
-static void CC_Touch_Set_Meas_Pins(unsigned char axis)
+static void silica_tsc_pinmux_meas(unsigned char axis)
 {
-	if (axis == Y) {
+	if (axis == ABS_Y) {
 		rza1_pfc_pin_assign(P5_8,  PMODE, PORT_OUT_HIGH);	
 		rza1_pfc_pin_assign(P8_14, PMODE, PORT_OUT_LOW);	
 		rza1_pfc_pin_assign(P8_15, PMODE, DIR_IN);	
@@ -155,7 +146,7 @@ static void CC_Touch_Set_Meas_Pins(unsigned char axis)
 	}
 }
 
-static void CC_Touch_Set_Stby_Pins(void)
+static void silica_tsc_pinmux_int(void)
 {
 	rza1_pfc_pin_assign(P5_8,  PMODE, DIR_IN);	
 	rza1_pfc_pin_assign(P8_15, PMODE, PORT_OUT_HIGH);	
@@ -163,37 +154,68 @@ static void CC_Touch_Set_Stby_Pins(void)
 	rza1_pfc_pin_assign(P8_14, PMODE, DIR_IN);	
 }
 
-static inline unsigned int silica_ts_read_pos(struct silica_ts *ts, int channel)
+static inline unsigned int silica_tsc_read_pos(struct silica_tsc *tsc, int channel)
 {
 	unsigned int val;
 
 	for (;;) {
-		val = silica_ts_read(ts, SH_ADC_ADCSR);
+		val = silica_tsc_read(tsc, SH_ADC_ADCSR);
 		if (val & SH_ADC_ADCSR_ADF)
 			break;
-		set_current_state(TASK_INTERRUPTIBLE);
-	//	schedule_timeout(1);
 	}
 
-	val = silica_ts_read(ts, silica_ts_get_reg_addr(channel));
-	val >>= 6;
-	val &= 0x03FFuL;
+	val = silica_tsc_read(tsc, silica_tsc_get_reg_addr(channel));
+	val >>= SH_ADC_ADDR_SHIFT;
+	val &= SH_ADC_ADDR_MASK;
 
 	return val;
 }
 
-static int silica_tsc_thread(void *_ts)
+static inline unsigned int silica_tsc_read_xres(struct silica_tsc *tsc, unsigned char axis, unsigned char ain)
 {
-	struct silica_ts *ts = _ts;
+	unsigned int val;
+
+	silica_tsc_pinmux_meas(axis);
+	silica_tsc_start_adc(tsc, ain);
+	val = silica_tsc_read_pos(tsc, ain);
+	silica_tsc_clear_bit(tsc, SH_ADC_ADCSR_ADF, SH_ADC_ADCSR);
+
+	return val;
+}
+
+static inline void silica_tsc_evt_add(struct silica_tsc *tsc, unsigned int x, unsigned int y)
+{
+	struct input_dev *idev = tsc->idev;
+
+	printk(KERN_EMERG "--- x: %d\n", x);
+	printk(KERN_EMERG "--- y: %d\n", y);
+
+	input_report_abs(idev, ABS_X, x);
+	input_report_abs(idev, ABS_Y, y);
+	input_report_key(idev, BTN_TOUCH, 1);
+	input_sync(idev);
+}
+
+static inline void silica_tsc_evt_release(struct silica_tsc *tsc)
+{
+	struct input_dev *idev = tsc->idev;
+
+	printk(KERN_EMERG "--- release\n");
+
+	input_report_key(idev, BTN_TOUCH, 0);
+	input_sync(idev);
+}
+
+static int silica_tsc_thread(void *_tsc)
+{
+	struct silica_tsc *tsc = _tsc;
 	DECLARE_WAITQUEUE(wait, current);
 	bool frozen, ignore = false;
 	int valid = 0;
-	signed long residue;
-
-	printk(KERN_EMERG "--->>> silica_tsc_thread <<<---\n");
+	signed long residue = 0;
 
 	set_freezable();
-	add_wait_queue(&ts->irq_wait, &wait);
+	add_wait_queue(&tsc->irq_wait, &wait);
 	while (!kthread_freezable_should_stop(&frozen)) {
 		unsigned int x, y;
 		signed long timeout;
@@ -202,51 +224,44 @@ static int silica_tsc_thread(void *_ts)
 			ignore = true;
 
 		set_current_state(TASK_INTERRUPTIBLE);
-		timeout = HZ;
+		timeout = HZ / 10;
 
 		if (residue != 0) {
-			CC_Touch_Set_Meas_Pins(X);
-			sh_adc_start_adc(ts, 3);
-			x = silica_ts_read_pos(ts, 3);
-			silica_ts_clear_bit(ts, SH_ADC_ADCSR_ADF, SH_ADC_ADCSR);
+			x = silica_tsc_read_xres(tsc, ABS_X, tsc->pdata->ain_x);
+			y = silica_tsc_read_xres(tsc, ABS_Y, tsc->pdata->ain_y);
 
-			CC_Touch_Set_Meas_Pins(Y);
-			sh_adc_start_adc(ts, 1);
-			y = silica_ts_read_pos(ts, 1);
-			silica_ts_clear_bit(ts, SH_ADC_ADCSR_ADF, SH_ADC_ADCSR);
-			
-			printk(KERN_EMERG "--- x: %d\n", x);
-			printk(KERN_EMERG "--- y: %d\n", y);
+			if (!ignore) {
+				silica_tsc_evt_add(tsc, x, y);
+				valid = 1;
+			}
+		} else if (!residue && valid) {
+			silica_tsc_evt_release(tsc);
+			valid = 0;
 		}
 
-		printk(KERN_EMERG "--- before schedule_timeout\n");
-
-		if (ts->irq_disabled) {
-			ts->irq_disabled = 0;
-			CC_Touch_Set_Stby_Pins();
-			enable_irq(ts->irq);
+		if (tsc->irq_disabled) {
+			tsc->irq_disabled = 0;
+			silica_tsc_pinmux_int();
+			enable_irq(tsc->irq);
 		}
 
 		residue = schedule_timeout(timeout);
-		printk(KERN_EMERG "--- residue: %ld\n", residue);
 	}
 
-	remove_wait_queue(&ts->irq_wait, &wait);
-	ts->rtask = NULL;
+	remove_wait_queue(&tsc->irq_wait, &wait);
+	tsc->rtask = NULL;
 	return 0;
 }
 
 static irqreturn_t silica_tsc_irqh(int irq, void *dev)
 {
-	struct silica_ts *ts_dev = dev;
+	struct silica_tsc *tsc = dev;
 
-	printk(KERN_EMERG "--->>> silica_tsc_irqh <<<---\n");
-
-	spin_lock(&ts_dev->irq_lock);
-	ts_dev->irq_disabled = 1;
-	disable_irq_nosync(ts_dev->irq);
-	spin_unlock(&ts_dev->irq_lock);
-	wake_up(&ts_dev->irq_wait);
+	spin_lock(&tsc->irq_lock);
+	tsc->irq_disabled = 1;
+	disable_irq_nosync(tsc->irq);
+	spin_unlock(&tsc->irq_lock);
+	wake_up(&tsc->irq_wait);
 	 
 	return IRQ_HANDLED;
 }
@@ -278,91 +293,99 @@ static int tsc_adc_get_clk(struct platform_device *pdev, struct clk **clk,
 
 static int silica_tsc_probe(struct platform_device *pdev)
 {
-	struct silica_ts *ts_dev;
+	struct silica_tsc *tsc;
 	struct input_dev *input_dev;
 	struct resource *res;
+	struct silica_tsc_pdata *pdata;
 	int err = -EINVAL;
 
-	printk(KERN_EMERG "------------------- silica_tsc_probe -------------\n");
-
-	ts_dev = kzalloc(sizeof(struct silica_ts), GFP_KERNEL);
+	tsc = kzalloc(sizeof(struct silica_tsc), GFP_KERNEL);
 	input_dev = input_allocate_device();
-	if (!ts_dev || !input_dev) {
+	if (!tsc || !input_dev) {
 		dev_err(&pdev->dev, "failed to allocate memory.\n");
 		err = -ENOMEM;
 		goto err_free_mem;
 	}
 	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	ts_dev->reg = devm_request_and_ioremap(&pdev->dev, res);
-	if (!ts_dev->reg) {
+	tsc->reg = devm_request_and_ioremap(&pdev->dev, res);
+	if (!tsc->reg) {
 		dev_err(&pdev->dev, "cannot ioremap.\n");
 		goto err_free_mem;
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	ts_dev->irq = res->start;
-		
-	err = tsc_adc_get_clk(pdev, &ts_dev->clk, "adc0");
+	tsc->irq = res->start;
+	tsc->irq_disabled = 0;
+	init_waitqueue_head(&tsc->irq_wait);
+
+	err = request_irq(tsc->irq, silica_tsc_irqh, 0,
+			  pdev->dev.driver->name, tsc);
+	if (err) {
+		dev_err(&pdev->dev, "failed to allocate irq.\n");
+		goto err_free_mem;
+	}
+
+	err = tsc_adc_get_clk(pdev, &tsc->clk, "adc0");
 	if (err < 0) {
 		dev_err(&pdev->dev, "failed to get clock\n");
 		goto err_free_mem;
 	}
 
-	ts_dev->idev = input_dev;
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		err = -EINVAL;
+		dev_err(&pdev->dev, "cannot get platform data\n");
+		goto err_free_mem;
+	}
+	tsc->pdata = pdata;
+
+	tsc->idev = input_dev;
 	input_dev->name = "Touchscreen panel";
 	input_dev->dev.parent = &pdev->dev;
 
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 	
-	input_set_abs_params(input_dev, ABS_X, 0, ADC_SINGLE_SAMPLE_MASK, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, ADC_SINGLE_SAMPLE_MASK, 0, 0);
+	input_set_abs_params(input_dev, ABS_X, pdata->x_min, pdata->x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, pdata->y_min, pdata->y_max, 0, 0);
 
-	input_set_drvdata(input_dev, ts_dev);
+	input_set_drvdata(input_dev, tsc);
 
 	err = input_register_device(input_dev);
 	if (err)
 		goto err_free_irq;
 
-	platform_set_drvdata(pdev, ts_dev);
+	silica_tsc_set_bit(tsc, SH_ADC_ADCSR_CKS_256, SH_ADC_ADCSR);
+	silica_tsc_pinmux_int();
 
-// ----------------------------------------------------------
-	ts_dev->irq_disabled = 0;
-	init_waitqueue_head(&ts_dev->irq_wait);
-	ts_dev->rtask = kthread_run(silica_tsc_thread, ts_dev, "ktsd");
-	if (IS_ERR(ts_dev->rtask))
+	tsc->rtask = kthread_run(silica_tsc_thread, tsc, "ktsd");
+	if (IS_ERR(tsc->rtask))
 		goto err_free_irq;
 	
-	err = request_irq(ts_dev->irq, silica_tsc_irqh, 0,
-			  pdev->dev.driver->name, ts_dev);
-	if (err) {
-		dev_err(&pdev->dev, "failed to allocate irq.\n");
-		goto err_free_mem;
-	}
+	platform_set_drvdata(pdev, tsc);
 
-// ----------------------------------------------------------
-	CC_Touch_Set_Stby_Pins();
-
-//	silica_ts_set_bit(ts_dev, SH_ADC_ADCSR_ADIE, SH_ADC_ADCSR);
-	silica_ts_set_bit(ts_dev, SH_ADC_ADCSR_CKS_256, SH_ADC_ADCSR);
-// ----------------------------------------------------------
-
-	printk(KERN_EMERG "------------------- silica_tsc_probe done -------------\n");
+	dev_info(&pdev->dev, "Silica touchscreen enabled\n");
 
 	return 0;
 
 err_free_irq:
-	free_irq(ts_dev->irq, ts_dev);
+	free_irq(tsc->irq, tsc);
 err_free_mem:
 	input_free_device(input_dev);
-	kfree(ts_dev);
+	kfree(tsc);
 
 	return err;
 }
 
 static int silica_tsc_remove(struct platform_device *pdev)
 {
+	struct silica_tsc *tsc = platform_get_drvdata(pdev);
+
+	input_unregister_device(tsc->idev);
+	kfree(tsc);
+
+	return 0;
 }
 
 static struct platform_driver silica_tsc_driver = {

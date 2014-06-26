@@ -187,8 +187,8 @@ static inline void silica_tsc_evt_add(struct silica_tsc *tsc, unsigned int x, un
 {
 	struct input_dev *idev = tsc->idev;
 
-	printk(KERN_EMERG "--- x: %d\n", x);
-	printk(KERN_EMERG "--- y: %d\n", y);
+	//printk(KERN_EMERG "--- x: %d\n", x);
+	//printk(KERN_EMERG "--- y: %d\n", y);
 
 	input_report_abs(idev, ABS_X, x);
 	input_report_abs(idev, ABS_Y, y);
@@ -200,7 +200,7 @@ static inline void silica_tsc_evt_release(struct silica_tsc *tsc)
 {
 	struct input_dev *idev = tsc->idev;
 
-	printk(KERN_EMERG "--- release\n");
+	//printk(KERN_EMERG "--- release\n");
 
 	input_report_key(idev, BTN_TOUCH, 0);
 	input_sync(idev);
@@ -291,12 +291,51 @@ static int tsc_adc_get_clk(struct platform_device *pdev, struct clk **clk,
 	return 0;
 }
 
+static int silica_tsc_open(struct input_dev *idev)
+{
+	struct silica_tsc *tsc = input_get_drvdata(idev);
+	int ret = 0;
+
+	init_waitqueue_head(&tsc->irq_wait);
+
+	ret = request_irq(tsc->irq, silica_tsc_irqh, 0,
+			  "silica-tsc", tsc);
+	if (ret < 0)
+		goto out;
+
+	silica_tsc_set_bit(tsc, SH_ADC_ADCSR_CKS_256, SH_ADC_ADCSR);
+	silica_tsc_pinmux_int();
+
+	tsc->rtask = kthread_run(silica_tsc_thread, tsc, "ktsd");
+	if (!IS_ERR(tsc->rtask)) {
+		ret = 0;
+	} else {
+		free_irq(tsc->irq, tsc);
+		tsc->rtask = NULL;
+		ret = -EFAULT;
+	}
+
+out:
+	return ret;
+}
+
+static void silica_tsc_close(struct input_dev *idev)
+{
+	struct silica_tsc *tsc = input_get_drvdata(idev);
+
+	if (tsc->rtask)
+		kthread_stop(tsc->rtask);
+
+	free_irq(tsc->irq, tsc);
+	silica_tsc_write(tsc, 0, SH_ADC_ADCSR);
+}
+
 static int silica_tsc_probe(struct platform_device *pdev)
 {
 	struct silica_tsc *tsc;
 	struct input_dev *input_dev;
-	struct resource *res;
 	struct silica_tsc_pdata *pdata;
+	struct resource *res;
 	int err = -EINVAL;
 
 	tsc = kzalloc(sizeof(struct silica_tsc), GFP_KERNEL);
@@ -304,31 +343,6 @@ static int silica_tsc_probe(struct platform_device *pdev)
 	if (!tsc || !input_dev) {
 		dev_err(&pdev->dev, "failed to allocate memory.\n");
 		err = -ENOMEM;
-		goto err_free_mem;
-	}
-	
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	tsc->reg = devm_request_and_ioremap(&pdev->dev, res);
-	if (!tsc->reg) {
-		dev_err(&pdev->dev, "cannot ioremap.\n");
-		goto err_free_mem;
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	tsc->irq = res->start;
-	tsc->irq_disabled = 0;
-	init_waitqueue_head(&tsc->irq_wait);
-
-	err = request_irq(tsc->irq, silica_tsc_irqh, 0,
-			  pdev->dev.driver->name, tsc);
-	if (err) {
-		dev_err(&pdev->dev, "failed to allocate irq.\n");
-		goto err_free_mem;
-	}
-
-	err = tsc_adc_get_clk(pdev, &tsc->clk, "adc0");
-	if (err < 0) {
-		dev_err(&pdev->dev, "failed to get clock\n");
 		goto err_free_mem;
 	}
 
@@ -340,8 +354,29 @@ static int silica_tsc_probe(struct platform_device *pdev)
 	}
 	tsc->pdata = pdata;
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	tsc->reg = devm_request_and_ioremap(&pdev->dev, res);
+	if (!tsc->reg) {
+		dev_err(&pdev->dev, "cannot ioremap.\n");
+		goto err_free_mem;
+	}
+
+	err = tsc_adc_get_clk(pdev, &tsc->clk, "adc0");
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to get clock\n");
+		goto err_free_mem;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	tsc->irq = res->start;
+	tsc->irq_disabled = 0;
+
+	platform_set_drvdata(pdev, tsc);
+
 	tsc->idev = input_dev;
 	input_dev->name = "Touchscreen panel";
+	input_dev->open = silica_tsc_open;
+	input_dev->close = silica_tsc_close;
 	input_dev->dev.parent = &pdev->dev;
 
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
@@ -354,23 +389,12 @@ static int silica_tsc_probe(struct platform_device *pdev)
 
 	err = input_register_device(input_dev);
 	if (err)
-		goto err_free_irq;
+		goto err_free_mem;
 
-	silica_tsc_set_bit(tsc, SH_ADC_ADCSR_CKS_256, SH_ADC_ADCSR);
-	silica_tsc_pinmux_int();
-
-	tsc->rtask = kthread_run(silica_tsc_thread, tsc, "ktsd");
-	if (IS_ERR(tsc->rtask))
-		goto err_free_irq;
-	
-	platform_set_drvdata(pdev, tsc);
-
-	dev_info(&pdev->dev, "Silica touchscreen enabled\n");
+	dev_info(&pdev->dev, "Silica touchscreen probed\n");
 
 	return 0;
 
-err_free_irq:
-	free_irq(tsc->irq, tsc);
 err_free_mem:
 	input_free_device(input_dev);
 	kfree(tsc);

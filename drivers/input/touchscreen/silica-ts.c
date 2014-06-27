@@ -183,9 +183,26 @@ static inline unsigned int silica_tsc_read_xres(struct silica_tsc *tsc, unsigned
 	return val;
 }
 
-static inline void silica_tsc_evt_add(struct silica_tsc *tsc, unsigned int x, unsigned int y)
+static inline void silica_tsc_evt_add(struct silica_tsc *tsc, unsigned int x, unsigned int y,
+				      int valid)
 {
 	struct input_dev *idev = tsc->idev;
+	static unsigned int x_old = 0;
+	static unsigned int y_old = 0;
+
+	if (!valid) {
+		x_old = x;
+		y_old = y;
+	}
+
+	if (abs(x - x_old) > 20 || abs(y - y_old) > 20) {
+		x = x_old;
+		y = y_old;
+	} else {
+		x_old = x;
+		y_old = y;
+	}
+
 
 	//printk(KERN_EMERG "--- x: %d\n", x);
 	//printk(KERN_EMERG "--- y: %d\n", y);
@@ -231,7 +248,7 @@ static int silica_tsc_thread(void *_tsc)
 			y = silica_tsc_read_xres(tsc, ABS_Y, tsc->pdata->ain_y);
 
 			if (!ignore) {
-				silica_tsc_evt_add(tsc, x, y);
+				silica_tsc_evt_add(tsc, x, y, valid);
 				valid = 1;
 			}
 		} else if (!residue && valid) {
@@ -382,8 +399,8 @@ static int silica_tsc_probe(struct platform_device *pdev)
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 	
-	input_set_abs_params(input_dev, ABS_X, pdata->x_min, pdata->x_max, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, pdata->y_min, pdata->y_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_X, pdata->x_min, pdata->x_max, 2, 0);
+	input_set_abs_params(input_dev, ABS_Y, pdata->y_min, pdata->y_max, 2, 0);
 
 	input_set_drvdata(input_dev, tsc);
 

@@ -66,6 +66,7 @@ extern int rza1_pfc_pin_assign(enum pfc_pin_number pinnum, enum pfc_mode mode,
 			       enum pfc_direction dir);
 extern void rza1_pfc_pin_lvds(void);
 extern int rza1_pfc_pin_bidirection(enum pfc_pin_number pinnum, bool bidirection);
+extern int rza1_pfc_pin_set(unsigned offset, int val);
 
 #ifdef CONFIG_MACH_RSKRZA1
 int rskrza1_board_i2c_pfc_assign(int id);

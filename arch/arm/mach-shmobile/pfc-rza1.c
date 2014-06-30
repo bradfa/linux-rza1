@@ -236,6 +236,13 @@ int rza1_pinmux_setup(void)
 	return retval;
 }
 
+int rza1_pfc_pin_set(unsigned offset, int val)
+{
+	chip_direction_output(&chip, offset, val);
+
+	return 0;
+}
+
 static int set_mode(unsigned int port, int bit, int mode)
 {
 	unsigned int reg;

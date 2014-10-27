@@ -48,6 +48,7 @@
 #include <linux/sh_intc.h>
 #include <../sound/soc/codecs/wm8978.h>
 #include <video/vdc5fb.h>
+#include <asm/system_misc.h>
 
 /* MMCIF */
 static struct resource sh_mmcif_resources[] = {
@@ -243,6 +244,12 @@ static void hachiko_power_led_off(void)
 	iowrite16(0x0020, (void __iomem *) 0xfcfe3004);
 }
 
+static void hachiko_restart(char str, const char *com)
+{
+	rza1_pfc_pin_assign(P3_7, PMODE, DIR_OUT);
+	iowrite16(0x0000, (void __iomem *) 0xfcfe300c);
+}
+
 void __init hachiko_init(void)
 {
 	if (disable_sdhi)
@@ -251,6 +258,7 @@ void __init hachiko_init(void)
 	platform_add_devices(hachiko_devices, ARRAY_SIZE(hachiko_devices));
 
 	pm_power_off = hachiko_power_led_off;
+	arm_pm_restart = hachiko_restart;
 
 	rza1_pinmux_setup();
 
